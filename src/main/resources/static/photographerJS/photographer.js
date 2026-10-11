@@ -245,7 +245,7 @@
 
         const details = document.createElement("div");
         const bookingLabel = document.createElement("span");
-        bookingLabel.className = "badge badge-soft-primary mb-3";
+        bookingLabel.className = "badge badge-soft-success mb-3";
         bookingLabel.textContent = "Booking #" + booking.id;
 
         const title = document.createElement("h5");
@@ -468,7 +468,7 @@
                     <div class="card-body p-4 d-flex flex-column justify-content-between">
                         <div>
                             <div class="d-flex align-items-center mb-2">
-                                <span class="badge badge-soft-primary">
+                                <span class="badge badge-soft-success">
                                     <i class="bi bi-images me-1"></i> ${cat.photoCount || 0} Photos
                                 </span>
                             </div>
