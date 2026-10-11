@@ -1,3 +1,4 @@
+
 package com.event.snappro.SnapPro.entity;
 
 import jakarta.persistence.*;
@@ -45,6 +46,9 @@ public class CustomerFeedbackEntity {
     @Column(name = "handled_by")
     private Integer handledBy;
 
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -54,6 +58,14 @@ public class CustomerFeedbackEntity {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+
+        if (isDeleted == null) {
+            isDeleted = false;
+        }
+
+        if (escalatedToManager == null) {
+            escalatedToManager = false;
+        }
     }
 
     @PreUpdate

@@ -1,3 +1,4 @@
+
 package com.event.snappro.SnapPro.entity;
 
 import jakarta.persistence.*;

@@ -1,3 +1,4 @@
+
 package com.event.snappro.SnapPro.repository;
 
 import com.event.snappro.SnapPro.entity.CustomerFeedbackEntity;
@@ -5,22 +6,37 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CustomerFeedbackRepository
         extends JpaRepository<CustomerFeedbackEntity, Integer> {
 
-    List<CustomerFeedbackEntity> findAllByOrderByCreatedAtDesc();
+    // Get only non-deleted feedback
+    List<CustomerFeedbackEntity>
+    findByIsDeletedFalseOrderByCreatedAtDesc();
 
-    List<CustomerFeedbackEntity> findByFeedbackStatusIdOrderByCreatedAtDesc(
+    // Filter non-deleted feedback by status
+    List<CustomerFeedbackEntity>
+    findByFeedbackStatusIdAndIsDeletedFalseOrderByCreatedAtDesc(
             Integer feedbackStatusId
     );
 
-    List<CustomerFeedbackEntity> findByEscalatedToManagerTrueOrderByCreatedAtDesc();
+    // Get non-deleted escalated complaints
+    List<CustomerFeedbackEntity>
+    findByEscalatedToManagerTrueAndIsDeletedFalseOrderByCreatedAtDesc();
 
-    List<CustomerFeedbackEntity> findByCustomerIdOrderByCreatedAtDesc(
+    // Get non-deleted feedback by customer
+    List<CustomerFeedbackEntity>
+    findByCustomerIdAndIsDeletedFalseOrderByCreatedAtDesc(
             Integer customerId
     );
 
-    List<CustomerFeedbackEntity> findByBookingId(Integer bookingId);
+    // Find a non-deleted feedback by booking
+    List<CustomerFeedbackEntity>
+    findByBookingIdAndIsDeletedFalse(Integer bookingId);
+
+    // Find a specific non-deleted feedback
+    Optional<CustomerFeedbackEntity>
+    findByIdAndIsDeletedFalse(Integer id);
 }

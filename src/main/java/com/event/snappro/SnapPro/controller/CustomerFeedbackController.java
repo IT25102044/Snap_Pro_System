@@ -1,3 +1,4 @@
+
 package com.event.snappro.SnapPro.controller;
 
 import com.event.snappro.SnapPro.entity.CustomerFeedbackEntity;
@@ -14,7 +15,8 @@ public class CustomerFeedbackController {
 
     private final CustomerFeedbackService customerFeedbackService;
 
-    public CustomerFeedbackController(CustomerFeedbackService customerFeedbackService) {
+    public CustomerFeedbackController(
+            CustomerFeedbackService customerFeedbackService) {
         this.customerFeedbackService = customerFeedbackService;
     }
 
@@ -24,42 +26,37 @@ public class CustomerFeedbackController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CustomerFeedbackEntity> getFeedbackById(@PathVariable Integer id) {
-        return ResponseEntity.ok(customerFeedbackService.getFeedbackById(id));
+    public ResponseEntity<CustomerFeedbackEntity> getFeedbackById(
+            @PathVariable Integer id) {
+        return ResponseEntity.ok(
+                customerFeedbackService.getFeedbackById(id));
     }
 
     @GetMapping("/status/{statusId}")
     public ResponseEntity<List<CustomerFeedbackEntity>> getFeedbackByStatus(
-            @PathVariable Integer statusId
-    ) {
+            @PathVariable Integer statusId) {
         return ResponseEntity.ok(
-                customerFeedbackService.getFeedbackByStatus(statusId)
-        );
+                customerFeedbackService.getFeedbackByStatus(statusId));
     }
 
     @GetMapping("/escalated")
     public ResponseEntity<List<CustomerFeedbackEntity>> getEscalatedFeedback() {
         return ResponseEntity.ok(
-                customerFeedbackService.getEscalatedFeedback()
-        );
+                customerFeedbackService.getEscalatedFeedback());
     }
 
     @GetMapping("/customer/{customerId}")
     public ResponseEntity<List<CustomerFeedbackEntity>> getFeedbackByCustomer(
-            @PathVariable Integer customerId
-    ) {
+            @PathVariable Integer customerId) {
         return ResponseEntity.ok(
-                customerFeedbackService.getFeedbackByCustomer(customerId)
-        );
+                customerFeedbackService.getFeedbackByCustomer(customerId));
     }
 
     @GetMapping("/booking/{bookingId}")
     public ResponseEntity<List<CustomerFeedbackEntity>> getFeedbackByBooking(
-            @PathVariable Integer bookingId
-    ) {
+            @PathVariable Integer bookingId) {
         return ResponseEntity.ok(
-                customerFeedbackService.getFeedbackByBooking(bookingId)
-        );
+                customerFeedbackService.getFeedbackByBooking(bookingId));
     }
 
     @PutMapping("/{id}")
@@ -67,30 +64,27 @@ public class CustomerFeedbackController {
             @PathVariable Integer id,
             @RequestParam(required = false) String croResponse,
             @RequestParam(required = false) Integer feedbackStatusId,
-            @RequestParam(required = false) Integer handledBy
-    ) {
+            @RequestParam(required = false) Integer handledBy) {
         return ResponseEntity.ok(
                 customerFeedbackService.updateFeedback(
-                        id,
-                        croResponse,
-                        feedbackStatusId,
-                        handledBy
-                )
-        );
+                        id, croResponse, feedbackStatusId, handledBy));
     }
 
     @PutMapping("/{id}/escalate")
     public ResponseEntity<CustomerFeedbackEntity> escalateFeedback(
             @PathVariable Integer id,
             @RequestParam String escalationRemarks,
-            @RequestParam(required = false) Integer handledBy
-    ) {
+            @RequestParam(required = false) Integer handledBy) {
         return ResponseEntity.ok(
                 customerFeedbackService.escalateFeedback(
-                        id,
-                        escalationRemarks,
-                        handledBy
-                )
-        );
+                        id, escalationRemarks, handledBy));
+    }
+
+    // Soft delete feedback
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> softDeleteFeedback(
+            @PathVariable Integer id) {
+        customerFeedbackService.softDeleteFeedback(id);
+        return ResponseEntity.noContent().build();
     }
 }

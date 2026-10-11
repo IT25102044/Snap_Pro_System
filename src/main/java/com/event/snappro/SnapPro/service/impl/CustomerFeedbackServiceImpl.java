@@ -1,3 +1,4 @@
+
 package com.event.snappro.SnapPro.service.impl;
 
 import com.event.snappro.SnapPro.entity.CustomerFeedbackEntity;
@@ -24,13 +25,19 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
 
     @Override
     public List<CustomerFeedbackEntity> getAllFeedback() {
-        return customerFeedbackRepository.findAllByOrderByCreatedAtDesc();
+        return customerFeedbackRepository
+                .findByIsDeletedFalseOrderByCreatedAtDesc();
     }
 
     @Override
     public CustomerFeedbackEntity getFeedbackById(Integer id) {
-        return customerFeedbackRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Feedback not found with ID: " + id));
+        return customerFeedbackRepository
+                .findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Feedback not found with ID: " + id
+                        )
+                );
     }
 
     @Override
@@ -49,7 +56,10 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
         if (feedbackStatusId != null) {
             feedbackStatusRepository.findById(feedbackStatusId)
                     .orElseThrow(() ->
-                            new RuntimeException("Feedback status not found with ID: " + feedbackStatusId)
+                            new RuntimeException(
+                                    "Feedback status not found with ID: "
+                                            + feedbackStatusId
+                            )
                     );
 
             feedback.setFeedbackStatusId(feedbackStatusId);
@@ -81,25 +91,45 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
     }
 
     @Override
-    public List<CustomerFeedbackEntity> getFeedbackByStatus(Integer feedbackStatusId) {
+    public List<CustomerFeedbackEntity> getFeedbackByStatus(
+            Integer feedbackStatusId
+    ) {
         return customerFeedbackRepository
-                .findByFeedbackStatusIdOrderByCreatedAtDesc(feedbackStatusId);
+                .findByFeedbackStatusIdAndIsDeletedFalseOrderByCreatedAtDesc(
+                        feedbackStatusId
+                );
     }
 
     @Override
     public List<CustomerFeedbackEntity> getEscalatedFeedback() {
         return customerFeedbackRepository
-                .findByEscalatedToManagerTrueOrderByCreatedAtDesc();
+                .findByEscalatedToManagerTrueAndIsDeletedFalseOrderByCreatedAtDesc();
     }
 
     @Override
-    public List<CustomerFeedbackEntity> getFeedbackByCustomer(Integer customerId) {
+    public List<CustomerFeedbackEntity> getFeedbackByCustomer(
+            Integer customerId
+    ) {
         return customerFeedbackRepository
-                .findByCustomerIdOrderByCreatedAtDesc(customerId);
+                .findByCustomerIdAndIsDeletedFalseOrderByCreatedAtDesc(
+                        customerId
+                );
     }
 
     @Override
-    public List<CustomerFeedbackEntity> getFeedbackByBooking(Integer bookingId) {
-        return customerFeedbackRepository.findByBookingId(bookingId);
+    public List<CustomerFeedbackEntity> getFeedbackByBooking(
+            Integer bookingId
+    ) {
+        return customerFeedbackRepository
+                .findByBookingIdAndIsDeletedFalse(bookingId);
+    }
+
+    @Override
+    public void softDeleteFeedback(Integer id) {
+        CustomerFeedbackEntity feedback = getFeedbackById(id);
+
+        feedback.setIsDeleted(true);
+
+        customerFeedbackRepository.save(feedback);
     }
 }

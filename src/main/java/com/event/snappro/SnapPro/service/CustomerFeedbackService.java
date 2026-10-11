@@ -1,3 +1,4 @@
+
 package com.event.snappro.SnapPro.service;
 
 import com.event.snappro.SnapPro.entity.CustomerFeedbackEntity;
@@ -30,4 +31,7 @@ public interface CustomerFeedbackService {
     List<CustomerFeedbackEntity> getFeedbackByCustomer(Integer customerId);
 
     List<CustomerFeedbackEntity> getFeedbackByBooking(Integer bookingId);
+
+    // Soft delete a feedback record
+    void softDeleteFeedback(Integer id);
 }

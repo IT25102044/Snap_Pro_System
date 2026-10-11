@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -320,6 +321,14 @@
 
     .view-btn {
       background: #687386;
+    }
+
+    .delete-btn {
+      background: #dc2626;
+    }
+
+    .delete-btn:hover {
+      background: #b91c1c;
     }
 
     /* =========================
@@ -1189,6 +1198,12 @@
                               : ""
               }
 
+                        <button
+                            class="action-btn delete-btn"
+                            onclick="deleteFeedback(${feedback.id})">
+                            Delete
+                        </button>
+
                     </div>
 
                 </td>
@@ -1737,6 +1752,59 @@
 
     }
 
+  }
+
+
+  /* =====================================================
+     SOFT DELETE FEEDBACK
+     ===================================================== */
+
+  async function deleteFeedback(id) {
+
+    const confirmed = confirm(
+            `Are you sure you want to delete feedback #${id}? This will hide it from the active feedback list.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    // Frontend sample-data mode only; does not update the database.
+    if (USE_SAMPLE_DATA) {
+      feedbackData = feedbackData.filter(
+              feedback => Number(feedback.id) !== Number(id)
+      );
+
+      displayFeedback(feedbackData);
+      updateStatistics(feedbackData);
+      showSuccess("Feedback removed from sample data.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        let detail = "";
+        try {
+          detail = await response.text();
+        } catch (_) {
+          // Keep the generic error if the response has no readable body.
+        }
+
+        throw new Error(
+                detail || `Failed to delete feedback (HTTP ${response.status}).`
+        );
+      }
+
+      showSuccess(`Feedback #${id} deleted successfully.`);
+      await loadFeedback();
+
+    } catch (error) {
+      showError(error.message || "An unexpected error occurred while deleting feedback.");
+    }
   }
 
 
