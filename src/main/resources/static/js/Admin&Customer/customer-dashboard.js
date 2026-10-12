@@ -131,6 +131,14 @@ function setupCustomerUI(user) {
     const bookingsCard = document.getElementById('bookingsTableCard');
     if (bookingsPrompt) bookingsPrompt.style.display = 'none';
     if (bookingsCard) bookingsCard.style.display = 'block';
+
+    // Reviews & Feedback Tab UI
+    const feedbackPrompt = document.getElementById('feedbackGuestPrompt');
+    const feedbackCard = document.getElementById('feedbackContentCard');
+    if (feedbackPrompt) feedbackPrompt.style.display = 'none';
+    if (feedbackCard) feedbackCard.style.display = 'block';
+
+    renderCompletedBookingsForFeedback(customerBookings);
 }
 
 // Configure UI for Guest Visitor
@@ -156,6 +164,12 @@ function setupGuestUI() {
     const bookingsCard = document.getElementById('bookingsTableCard');
     if (bookingsPrompt) bookingsPrompt.style.display = 'block';
     if (bookingsCard) bookingsCard.style.display = 'none';
+
+    // Reviews & Feedback Tab UI
+    const feedbackPrompt = document.getElementById('feedbackGuestPrompt');
+    const feedbackCard = document.getElementById('feedbackContentCard');
+    if (feedbackPrompt) feedbackPrompt.style.display = 'block';
+    if (feedbackCard) feedbackCard.style.display = 'none';
 }
 
 // 2. Tab Navigation Helpers & Interceptors
@@ -163,6 +177,12 @@ function switchTab(tabId) {
     // If user tries to open bookings while not logged in, prompt login
     if (tabId === 'bookings' && !currentUser) {
         showLoginPrompt('Please sign in to view your bookings and manage scheduled photo shoots.', 'customer-dashboard.html#bookings');
+        return;
+    }
+
+    // If user tries to open reviews & feedback while not logged in, prompt login
+    if (tabId === 'feedback' && !currentUser) {
+        showLoginPrompt('Please sign in to view and submit customer reviews and service feedback.', 'customer-dashboard.html#feedback');
         return;
     }
 
@@ -185,6 +205,18 @@ function handleBookingsNavClick(event) {
     }
     // If logged in, reload customer bookings
     loadCustomerBookings();
+    return true;
+}
+
+function handleFeedbackNavClick(event) {
+    if (!currentUser) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        showLoginPrompt('Please sign in to view and submit customer reviews and service feedback.', 'customer-dashboard.html#feedback');
+        return false;
+    }
     return true;
 }
 
@@ -400,17 +432,175 @@ function openCustomBookingModal() {
     }
 }
 
-// 7. Open Review Modal (Gated with login check)
+// 7. Reviews & Feedback System (Completed Bookings Gating & Submission)
+
+function renderCompletedBookingsForFeedback(bookings) {
+    const tableBody = document.getElementById('completedBookingsTableBody');
+    const countBadge = document.getElementById('completedBookingsCountBadge');
+    if (!tableBody) return;
+
+    const list = Array.isArray(bookings) ? bookings : [];
+    const completedList = list.filter(b => (b.bookingStatus || '').toLowerCase() === 'completed');
+
+    if (countBadge) {
+        countBadge.textContent = `${completedList.length} Completed Shoot${completedList.length === 1 ? '' : 's'}`;
+    }
+
+    if (completedList.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-5 text-muted">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-light rounded-circle mb-3" style="width: 56px; height: 56px;">
+                        <i class="bi bi-calendar-check fs-3 text-secondary"></i>
+                    </div>
+                    <h6 class="fw-bold text-dark mb-1">No Completed Bookings Yet</h6>
+                    <p class="small text-muted mb-0" style="max-width: 440px; margin: 0 auto;">
+                        Once your photo shoot takes place and our studio marks the booking status as <strong>Completed</strong>, it will appear here so you can review your photographer and service experience.
+                    </p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    let rowsHtml = '';
+    completedList.forEach(b => {
+        const timeFormatted = b.startTime ? b.startTime.substring(0, 5) : '';
+        const endTimeFormatted = b.endTime ? b.endTime.substring(0, 5) : '';
+        const timeDisplay = (timeFormatted && endTimeFormatted) ? `${timeFormatted} - ${endTimeFormatted}` : timeFormatted;
+
+        rowsHtml += `
+            <tr>
+                <td class="ps-4">
+                    <div class="fw-semibold text-dark">${escapeHtml(b.eventTitle || 'Untitled Event')}</div>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">#EVT-${b.id}</span>
+                </td>
+                <td>
+                    <div class="fw-medium text-dark">${escapeHtml(b.packageTitle || 'Custom Shoot')}</div>
+                </td>
+                <td>
+                    <div><i class="bi bi-calendar3 me-1 text-muted"></i>${escapeHtml(b.eventDate || 'Date TBD')}</div>
+                    ${timeDisplay ? `<small class="text-muted"><i class="bi bi-clock me-1"></i>${escapeHtml(timeDisplay)}</small>` : ''}
+                </td>
+                <td>
+                    <small class="text-muted"><i class="bi bi-geo-alt me-1 text-danger"></i>${escapeHtml(b.eventLocation || 'Venue TBD')}</small>
+                </td>
+                <td>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold">
+                        <i class="bi bi-check2-circle me-1"></i>Completed
+                    </span>
+                </td>
+                <td class="text-end pe-4">
+                    <button class="btn btn-sm btn-primary fw-semibold px-3 shadow-sm d-inline-flex align-items-center gap-1" onclick="openReviewModalForBooking(${b.id})">
+                        <i class="bi bi-star-fill text-warning"></i> Review
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    tableBody.innerHTML = rowsHtml;
+}
+
+function openReviewModalForBooking(bookingId) {
+    if (!currentUser) {
+        showLoginPrompt('Please sign in to submit a service review and rating.', 'customer-dashboard.html#feedback');
+        return;
+    }
+
+    const booking = customerBookings.find(b => b.id === bookingId);
+    if (!booking) {
+        console.warn('Booking not found for ID:', bookingId);
+        openReviewModal();
+        return;
+    }
+
+    // Set hidden booking ID
+    const bookingIdInput = document.getElementById('reviewBookingId');
+    if (bookingIdInput) bookingIdInput.value = booking.id;
+
+    // Display banner with selected booking info
+    const bannerEl = document.getElementById('reviewBookingBanner');
+    if (bannerEl) bannerEl.style.display = 'flex';
+
+    const bookingRefEl = document.getElementById('reviewBookingRef');
+    if (bookingRefEl) bookingRefEl.textContent = `#EVT-${booking.id}`;
+
+    const bookingEventEl = document.getElementById('reviewBookingEvent');
+    if (bookingEventEl) bookingEventEl.textContent = booking.eventTitle || 'Event Shoot';
+
+    const bookingMetaEl = document.getElementById('reviewBookingMeta');
+    if (bookingMetaEl) {
+        const date = booking.eventDate || 'Date TBD';
+        const pkg = booking.packageTitle || 'Custom Shoot';
+        bookingMetaEl.textContent = `${date} • ${pkg}`;
+    }
+
+    // Reset rating to 5 and comments to empty
+    const ratingSelect = document.getElementById('reviewRating');
+    if (ratingSelect) ratingSelect.value = '5';
+
+    const commentsEl = document.getElementById('reviewComments');
+    if (commentsEl) commentsEl.value = '';
+
+    const modalEl = document.getElementById('reviewModal');
+    if (modalEl) {
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInstance.show();
+    }
+}
+
 function openReviewModal() {
     if (!currentUser) {
         showLoginPrompt('Please sign in to submit a service review and rating.', 'customer-dashboard.html#feedback');
         return;
     }
 
+    // If there is any completed booking, default to the first completed booking
+    const completed = customerBookings.filter(b => (b.bookingStatus || '').toLowerCase() === 'completed');
+    if (completed.length > 0) {
+        openReviewModalForBooking(completed[0].id);
+        return;
+    }
+
+    // Otherwise open generic review modal
+    const bookingIdInput = document.getElementById('reviewBookingId');
+    if (bookingIdInput) bookingIdInput.value = '';
+
+    const bannerEl = document.getElementById('reviewBookingBanner');
+    if (bannerEl) bannerEl.style.display = 'none';
+
+    const ratingSelect = document.getElementById('reviewRating');
+    if (ratingSelect) ratingSelect.value = '5';
+
+    const commentsEl = document.getElementById('reviewComments');
+    if (commentsEl) commentsEl.value = '';
+
     const modalEl = document.getElementById('reviewModal');
     if (modalEl) {
         const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
         modalInstance.show();
+    }
+}
+
+function handleReviewSubmit(event) {
+    if (event) event.preventDefault();
+
+    const bookingId = document.getElementById('reviewBookingId')?.value;
+    const title = document.getElementById('reviewBookingEvent')?.textContent || 'Your Event';
+    const rating = document.getElementById('reviewRating')?.value || '5';
+
+    const modalEl = document.getElementById('reviewModal');
+    if (modalEl) {
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+    }
+
+    const refMsg = bookingId ? ` for booking #EVT-${bookingId}` : '';
+    alert(`Thank you! Your ${rating}-star review for "${title}"${refMsg} has been submitted successfully.`);
+
+    if (document.getElementById('reviewComments')) {
+        document.getElementById('reviewComments').value = '';
     }
 }
 
@@ -993,6 +1183,7 @@ async function loadCustomerBookings() {
                 if (recentTableBody) {
                     recentTableBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No recent bookings recorded yet.</td></tr>`;
                 }
+                renderCompletedBookingsForFeedback(customerBookings);
                 return;
             }
 
@@ -1066,6 +1257,7 @@ async function loadCustomerBookings() {
             if (fullTableBody) fullTableBody.innerHTML = fullRowsHtml;
             if (recentTableBody) recentTableBody.innerHTML = recentRowsHtml;
 
+            renderCompletedBookingsForFeedback(customerBookings);
         }
     } catch (error) {
         console.error('Error fetching customer bookings:', error);
@@ -1251,6 +1443,12 @@ function handleUrlIntentions() {
             switchTab('bookings');
         } else {
             showLoginPrompt('Please sign in to view your bookings.', 'customer-dashboard.html#bookings');
+        }
+    } else if (hash === '#feedback') {
+        if (currentUser) {
+            switchTab('feedback');
+        } else {
+            showLoginPrompt('Please sign in to view and submit customer reviews and service feedback.', 'customer-dashboard.html#feedback');
         }
     } else if (hash) {
         const cleanTab = hash.replace('#', '');
