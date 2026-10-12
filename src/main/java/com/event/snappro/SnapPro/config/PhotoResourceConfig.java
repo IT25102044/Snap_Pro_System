@@ -10,7 +10,7 @@ import java.nio.file.Path;
 @Configuration
 public class PhotoResourceConfig implements WebMvcConfigurer {
 
-    @Value("${app.upload.dir:uploads/event-photos}")
+    @Value("${app.upload.dir:src/main/resources/photos}")
     private String uploadDirectory;
 
     @Override
