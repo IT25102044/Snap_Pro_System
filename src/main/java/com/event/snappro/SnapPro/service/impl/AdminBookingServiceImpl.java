@@ -11,6 +11,7 @@ import com.event.snappro.SnapPro.repository.BookingStatusRepository;
 import com.event.snappro.SnapPro.repository.EventBookingRepository;
 import com.event.snappro.SnapPro.repository.PaymentMethodRepository;
 import com.event.snappro.SnapPro.service.AdminBookingService;
+import com.event.snappro.SnapPro.strategy.payment.PaymentContext;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -27,6 +28,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final EventBookingRepository eventBookingRepository;
     private final BookingStatusRepository bookingStatusRepository;
     private final PaymentMethodRepository paymentMethodRepository;
+    private final PaymentContext paymentContext;
     private final ModelMapper modelMapper;
 
     @Override
@@ -125,6 +127,10 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             PaymentMethodEntity resolvedPayment = resolvePaymentMethod(dto.getPaymentMethodId(), dto.getPaymentMethod());
             if (resolvedPayment != null) {
                 booking.setPaymentMethod(resolvedPayment);
+
+                // Execute Strategy Pattern for updated payment method
+                paymentContext.setStrategyByMethodName(resolvedPayment.getPaymentMethod());
+                paymentContext.executePayment(booking, booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0);
             }
         }
 
