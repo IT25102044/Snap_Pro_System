@@ -12,6 +12,7 @@ import com.event.snappro.SnapPro.repository.EventCatalogRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,6 +35,9 @@ public class EventCatalogServiceImpl implements EventCatalogService {
         this.eventPhotoRepository = eventPhotoRepository;
         this.bookingRepository = bookingRepository;
     }
+
+    @Value("${app.upload.dir:src/main/resources/photos}")
+    private String uploadDirectory;
 
     // =====================================================
     // CREATE CATALOG MANUALLY
@@ -159,9 +163,17 @@ public class EventCatalogServiceImpl implements EventCatalogService {
         for (EventPhoto photo : photos) {
             try {
                 if (photo.getFilePath() != null) {
-                    Path root = Paths.get("uploads/event-photos").toAbsolutePath().normalize();
-                    Path filePath = Paths.get(photo.getFilePath()).toAbsolutePath().normalize();
-                    if (filePath.startsWith(root)) Files.deleteIfExists(filePath);
+                    Path root = Paths.get(uploadDirectory)
+                            .toAbsolutePath()
+                            .normalize();
+
+                    Path filePath = root.resolve(
+                            Paths.get(photo.getFilePath()).getFileName()
+                    ).normalize();
+
+                    if (filePath.startsWith(root)) {
+                        Files.deleteIfExists(filePath);
+                    }
                 }
             } catch (Exception e) {
                 // Ignore if physical file was already removed

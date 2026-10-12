@@ -31,7 +31,7 @@ public class EventPhotoServiceImpl implements EventPhotoService {
         private final EventCatalogRepository eventCatalogRepository;
         private final PhotographerProfileService photographerProfileService;
 
-        @Value("${app.upload.dir:uploads/event-photos}")
+        @Value("${app.upload.dir:src/main/resources/photos}")
         private String uploadDirectory;
 
         public EventPhotoServiceImpl(
