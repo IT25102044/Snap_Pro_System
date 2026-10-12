@@ -1,6 +1,9 @@
 let availablePackages = [];
 let customerBookings = [];
 let currentUser = null;
+let overviewAlbums = [];
+let customerGalleryAlbums = [];
+let galleryAlbumOpenRequest = 0;
 
 function getDashboardForRole(role) {
     if (!role) return 'customer-dashboard.html';
@@ -77,8 +80,8 @@ async function checkSession() {
         currentUser = null;
         setupGuestUI();
     } finally {
-        // Load packages for all users (guests and authenticated customers)
-        loadPackages().then(() => {
+        // All visitors can browse public Overview albums.
+        Promise.all([loadPackages(), loadOverviewAlbums()]).then(() => {
             handleUrlIntentions();
         });
     }
@@ -139,6 +142,11 @@ function setupCustomerUI(user) {
     if (feedbackCard) feedbackCard.style.display = 'block';
 
     renderCompletedBookingsForFeedback(customerBookings);
+
+    const galleryContent = document.getElementById('customerGalleryAuthContent');
+    const galleryGuest = document.getElementById('customerGalleryGuestPrompt');
+    if (galleryContent) galleryContent.style.display = 'block';
+    if (galleryGuest) galleryGuest.style.display = 'none';
 }
 
 // Configure UI for Guest Visitor
@@ -170,10 +178,20 @@ function setupGuestUI() {
     const feedbackCard = document.getElementById('feedbackContentCard');
     if (feedbackPrompt) feedbackPrompt.style.display = 'block';
     if (feedbackCard) feedbackCard.style.display = 'none';
+
+    customerGalleryAlbums = [];
+    const galleryContent = document.getElementById('customerGalleryAuthContent');
+    const galleryGuest = document.getElementById('customerGalleryGuestPrompt');
+    if (galleryContent) galleryContent.style.display = 'none';
+    if (galleryGuest) galleryGuest.style.display = 'block';
 }
 
 // 2. Tab Navigation Helpers & Interceptors
 function switchTab(tabId) {
+    if (tabId === 'gallery' && !currentUser) {
+        showLoginPrompt('Please sign in to view photos from your completed bookings.', 'customer-dashboard.html#gallery');
+        return;
+    }
     // If user tries to open bookings while not logged in, prompt login
     if (tabId === 'bookings' && !currentUser) {
         showLoginPrompt('Please sign in to view your bookings and manage scheduled photo shoots.', 'customer-dashboard.html#bookings');
@@ -190,6 +208,7 @@ function switchTab(tabId) {
     if (tabTriggerEl) {
         const tab = bootstrap.Tab.getOrCreateInstance(tabTriggerEl);
         tab.show();
+        if (tabId === 'gallery') loadCustomerGalleryAlbums();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
@@ -217,6 +236,20 @@ function handleFeedbackNavClick(event) {
         showLoginPrompt('Please sign in to view and submit customer reviews and service feedback.', 'customer-dashboard.html#feedback');
         return false;
     }
+    return true;
+}
+
+function handleEventPhotosNavClick(event) {
+    if (!currentUser) {
+        if (event) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+        showLoginPrompt('Please sign in to view photo albums from your completed bookings.',
+            'customer-dashboard.html#gallery');
+        return false;
+    }
+    loadCustomerGalleryAlbums();
     return true;
 }
 
@@ -254,6 +287,291 @@ function handlePromptRegister() {
         if (modalInstance) modalInstance.hide();
     }
     window.location.href = 'register.html';
+}
+
+// Overview album gallery: reuse the photographer's existing read APIs without changing them.
+// Overview is intentionally public: everyone can view every album without signing in.
+function overviewPhotoUrl(photo) {
+    const path = String(photo?.filePath || '').replace(/^\/+/, '');
+    return /^uploads\/event-photos\/[a-zA-Z0-9._-]+$/.test(path) ? '/' + path : '';
+}
+
+async function loadOverviewAlbums() {
+    const container = document.getElementById('overviewAlbumsGrid');
+    if (!container) return;
+
+    try {
+        const albumsResponse = await fetch('/api/catalogs', { credentials: 'include' });
+        if (!albumsResponse.ok) throw new Error('Unable to retrieve photo albums.');
+        const albums = await albumsResponse.json();
+        if (!Array.isArray(albums)) throw new Error('Invalid album response.');
+        overviewAlbums = albums;
+
+        if (albums.length === 0) {
+            container.innerHTML = `<div class="col-12 text-center py-4 text-muted">
+                <i class="bi bi-images fs-1 d-block mb-2"></i>No albums have been published yet.
+            </div>`;
+            return;
+        }
+
+        // Fetch active photos for one cover preview per album. The modal loads its own
+        // selected album when anyone opens it; there are no edit controls.
+        let photos = [];
+        try {
+            const photoResponse = await fetch('/api/photos', { credentials: 'include' });
+            if (photoResponse.ok) {
+                const result = await photoResponse.json();
+                if (Array.isArray(result)) photos = result;
+            }
+        } catch (error) {
+            console.warn('Album preview images unavailable:', error);
+        }
+
+        const coverByCatalog = new Map();
+        photos.forEach(photo => {
+            const url = overviewPhotoUrl(photo);
+            const catalogId = Number(photo.catalogId);
+            if (url && !coverByCatalog.has(catalogId)) coverByCatalog.set(catalogId, url);
+        });
+
+        container.innerHTML = albums.map(album => {
+            const id = Number(album.id);
+            if (!Number.isSafeInteger(id) || id <= 0) return '';
+            const title = escapeHtml(album.catalogName || 'Untitled Album');
+            const count = Number(album.photoCount) || 0;
+            const cover = coverByCatalog.get(id);
+            return `<div class="col-12 col-sm-6 col-xl-4">
+                <button type="button" class="overview-album-card" data-overview-album-id="${id}" aria-label="View album ${title}">
+                    <div class="overview-album-cover">
+                        <i class="bi bi-images display-3" aria-hidden="true"></i>
+                        ${cover ? `<img src="${cover}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+                        <span class="overview-album-count"><i class="bi bi-images me-1"></i>${count} photo${count === 1 ? '' : 's'}</span>
+                    </div>
+                    <div class="px-3 py-3">
+                        <h5 class="fw-bold mb-2 text-truncate">${title}</h5>
+                        <span class="overview-album-action">
+                            <i class="bi bi-eye me-1"></i>
+                            View photos
+                            <i class="bi bi-arrow-right ms-1"></i>
+                        </span>
+                    </div>
+                </button>
+            </div>`;
+        }).join('');
+    } catch (error) {
+        console.error('Could not load albums:', error);
+        container.innerHTML = `<div class="col-12 text-center text-muted py-4">
+            <i class="bi bi-exclamation-circle me-2"></i>Unable to load photo albums right now. Please try refreshing the page.
+        </div>`;
+    }
+}
+
+async function openCustomerAlbum(albumId) {
+    albumId = Number(albumId);
+    if (!Number.isSafeInteger(albumId) || albumId <= 0) return;
+
+    // Overview albums are public; do not open the sign-in modal.
+    const selectedAlbum = overviewAlbums.find(album => Number(album.id) === albumId);
+    if (!selectedAlbum) return;
+
+    const titleEl = document.getElementById('customerAlbumTitle');
+    const summaryEl = document.getElementById('customerAlbumSummary');
+    const photosEl = document.getElementById('customerAlbumPhotos');
+    const modalEl = document.getElementById('customerAlbumModal');
+    if (!titleEl || !summaryEl || !photosEl || !modalEl) return;
+
+    titleEl.textContent = selectedAlbum.catalogName || 'Photo Album';
+    summaryEl.textContent = 'Photo gallery - view only';
+    setAlbumDownloadControls(null);
+    photosEl.innerHTML = `<div class="col-12 text-center text-muted py-5">
+        <div class="spinner-border text-primary mb-2" role="status" aria-label="Loading photos"></div>
+        <p class="mb-0">Loading album photos...</p>
+    </div>`;
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+    try {
+        const response = await fetch(`/api/photos/catalog/${albumId}`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Unable to retrieve album photos.');
+        const photos = await response.json();
+        if (!Array.isArray(photos)) throw new Error('Invalid photo response.');
+
+        // Show images only (no upload, update, or delete actions).
+        const matchingPhotos = photos.filter(photo => Number(photo.catalogId) === albumId && overviewPhotoUrl(photo));
+        summaryEl.textContent = `${matchingPhotos.length} photo${matchingPhotos.length === 1 ? '' : 's'} - view only`;
+        photosEl.innerHTML = matchingPhotos.length ? matchingPhotos.map(photo => {
+            const src = overviewPhotoUrl(photo);
+            return `<div class="col-12 col-md-6 col-lg-4">
+                <div class="rounded-3 overflow-hidden bg-light border p-2 h-100">
+                    <img class="customer-album-photo" src="${src}" loading="lazy"
+                         alt="${escapeHtml(photo.title || photo.fileName || 'Album photo')}">
+                </div>
+            </div>`;
+        }).join('') : `<div class="col-12 text-center text-muted py-5">
+            <i class="bi bi-images fs-1 d-block mb-2"></i>No photos are available in this album yet.
+        </div>`;
+    } catch (error) {
+        console.error('Could not open album:', error);
+        photosEl.innerHTML = `<div class="col-12 text-center text-danger py-5">
+            <i class="bi bi-exclamation-circle me-2"></i>Unable to display photos. Please try again.
+        </div>`;
+    }
+}
+
+// The same modal is used for public Overview and private Event Photos.
+// Download controls must never appear in the public Overview viewer.
+function setAlbumDownloadControls(albumId, hasPhotos = true) {
+    const button = document.getElementById('customerAlbumDownloadZip');
+    if (!button) return;
+    const validId = Number.isSafeInteger(Number(albumId)) && Number(albumId) > 0;
+    button.style.display = validId ? 'inline-flex' : 'none';
+    if (validId) {
+        button.href = `/api/customer/gallery/albums/${Number(albumId)}/download`;
+        button.classList.toggle('disabled', !hasPhotos);
+        button.setAttribute('aria-disabled', String(!hasPhotos));
+        button.tabIndex = hasPhotos ? 0 : -1;
+    } else {
+        button.removeAttribute('href');
+    }
+}
+
+// Private Event Photos tab: display ONLY albums for the logged-in customer's
+// completed bookings. Unlike public Overview, this calls customer-only endpoints.
+async function loadCustomerGalleryAlbums() {
+    const grid = document.getElementById('customerGalleryAlbumsGrid');
+    if (!grid || !currentUser) return;
+
+    grid.innerHTML = `<div class="col-12 text-center text-muted py-5">
+        <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+        Loading albums from your completed bookings...
+    </div>`;
+
+    try {
+        const response = await fetch('/api/customer/gallery/albums', { credentials: 'include' });
+        if (response.status === 401) {
+            currentUser = null;
+            setupGuestUI();
+            showLoginPrompt('Your session has expired. Please sign in to see your Event Photos.',
+                'customer-dashboard.html#gallery');
+            return;
+        }
+        if (!response.ok) throw new Error('Customer albums could not be retrieved.');
+        const albums = await response.json();
+        if (!Array.isArray(albums)) throw new Error('Invalid customer album response.');
+        customerGalleryAlbums = albums;
+
+        if (!albums.length) {
+            grid.innerHTML = `<div class="col-12"><div class="card border-0 shadow-sm rounded-3 p-5 text-center text-muted">
+                <i class="bi bi-images display-4 mb-3"></i>
+                <h5 class="fw-bold text-dark">No completed-event albums available</h5>
+                <p class="mb-0">Only albums linked to your completed bookings appear here. If your event has been completed, please wait until the photographer creates its album.</p>
+            </div></div>`;
+            return;
+        }
+
+        grid.innerHTML = albums.map(album => {
+            const albumId = Number(album.id);
+            if (!Number.isSafeInteger(albumId) || albumId <= 0) return '';
+            const photoCount = Number(album.photoCount) || 0;
+            const coverId = Number(album.coverPhotoId);
+            const cover = Number.isSafeInteger(coverId) && coverId > 0
+                ? `<img src="/api/customer/gallery/photos/${coverId}/content" alt="" loading="lazy" onerror="this.remove()">`
+                : '';
+            const name = escapeHtml(album.catalogName || 'Event Album');
+            const eventTitle = escapeHtml(album.eventTitle || 'Your completed event');
+            const date = escapeHtml(album.eventDate || '');
+            return `<div class="col-12 col-sm-6 col-xl-4">
+                <button class="overview-album-card" type="button" data-customer-gallery-album="${albumId}" aria-label="View ${name}">
+                    <div class="overview-album-cover">
+                        <i class="bi bi-images display-3" aria-hidden="true"></i>
+                        ${cover}
+                        <span class="overview-album-count"><i class="bi bi-images me-1"></i>${photoCount} photo${photoCount === 1 ? '' : 's'}</span>
+                    </div>
+                    <div class="px-3 py-3">
+                        <h5 class="fw-bold mb-1 text-truncate">${name}</h5>
+                        <p class="small text-muted mb-2 text-truncate">${eventTitle}${date ? ` · ${date}` : ''}</p>
+                        <span class="overview-album-action"><i class="bi bi-eye me-1"></i>View photos <i class="bi bi-arrow-right ms-1"></i></span>
+                    </div>
+                </button>
+                <a class="btn btn-outline-primary btn-sm mt-2 w-100 ${photoCount ? '' : 'disabled'}"
+                   href="/api/customer/gallery/albums/${albumId}/download"
+                   aria-label="Download ${name} as ZIP" ${photoCount ? '' : 'aria-disabled="true" tabindex="-1"'}>
+                    <i class="bi bi-file-earmark-zip me-1"></i>Download album ZIP
+                </a>
+            </div>`;
+        }).join('');
+    } catch (error) {
+        console.error('Could not load customer event photos:', error);
+        grid.innerHTML = `<div class="col-12 text-center text-danger py-5">
+            <i class="bi bi-exclamation-circle me-2"></i>Unable to load your event albums. Please try again.
+        </div>`;
+    }
+}
+
+async function openBookedEventAlbum(albumId) {
+    albumId = Number(albumId);
+    if (!Number.isSafeInteger(albumId) || albumId <= 0) return;
+    if (!currentUser) {
+        showLoginPrompt('Please sign in to view your completed-event photos.', 'customer-dashboard.html#gallery');
+        return;
+    }
+
+    const album = customerGalleryAlbums.find(item => Number(item.id) === albumId);
+    if (!album) return;
+
+    const modalEl = document.getElementById('customerAlbumModal');
+    const titleEl = document.getElementById('customerAlbumTitle');
+    const summaryEl = document.getElementById('customerAlbumSummary');
+    const photosEl = document.getElementById('customerAlbumPhotos');
+    if (!modalEl || !titleEl || !summaryEl || !photosEl) return;
+    const requestId = ++galleryAlbumOpenRequest;
+    titleEl.textContent = album.catalogName || 'My Event Album';
+    summaryEl.textContent = 'Completed event - read-only downloads';
+    setAlbumDownloadControls(albumId);
+    photosEl.innerHTML = `<div class="col-12 text-center text-muted py-5">Loading your event photos...</div>`;
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+    try {
+        const response = await fetch(`/api/customer/gallery/albums/${albumId}/photos`, { credentials: 'include' });
+        if (requestId !== galleryAlbumOpenRequest) return;
+        if (response.status === 401) {
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+            currentUser = null;
+            setupGuestUI();
+            showLoginPrompt('Please sign in again to view these photos.', 'customer-dashboard.html#gallery');
+            return;
+        }
+        if (!response.ok) throw new Error('The selected album is unavailable.');
+        const photos = await response.json();
+        if (!Array.isArray(photos)) throw new Error('Invalid customer photo response.');
+        const allowedPhotos = photos.filter(photo => Number(photo.catalogId) === albumId
+            && Number.isSafeInteger(Number(photo.id)) && Number(photo.id) > 0);
+        summaryEl.textContent = `${allowedPhotos.length} photo${allowedPhotos.length === 1 ? '' : 's'} - read-only`;
+        setAlbumDownloadControls(albumId, allowedPhotos.length > 0);
+        photosEl.innerHTML = allowedPhotos.length ? allowedPhotos.map(photo => `
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="rounded-3 overflow-hidden bg-light border p-2 h-100">
+                    <img class="customer-album-photo" loading="lazy"
+                         src="/api/customer/gallery/photos/${Number(photo.id)}/content"
+                         alt="${escapeHtml(photo.title || photo.fileName || 'Event photo')}">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mt-2">
+                        <span class="small text-truncate" title="${escapeHtml(photo.fileName || 'Photo')}">${escapeHtml(photo.fileName || 'Photo')}</span>
+                        <a class="btn btn-outline-primary btn-sm flex-shrink-0"
+                           href="/api/customer/gallery/photos/${Number(photo.id)}/download"
+                           aria-label="Download ${escapeHtml(photo.fileName || 'photo')}">
+                            <i class="bi bi-download me-1"></i>Download
+                        </a>
+                    </div>
+                </div>
+            </div>`).join('') : `<div class="col-12 text-center text-muted py-5">
+                <i class="bi bi-images fs-1 d-block mb-2"></i>No photos have been added to this event album yet.
+            </div>`;
+    } catch (error) {
+        if (requestId !== galleryAlbumOpenRequest) return;
+        console.error('Could not open customer event album:', error);
+        photosEl.innerHTML = `<div class="col-12 text-center text-danger py-5">
+            <i class="bi bi-exclamation-circle me-2"></i>Unable to display this album. Please try again.
+        </div>`;
+    }
 }
 
 // 4. Load Packages Catalog (Public)
@@ -320,7 +638,7 @@ async function loadPackages() {
                             <ul class="list-unstyled small mb-4 flex-grow-1">
                                 ${inclusionsHtml}
                             </ul>
-                            <button class="btn ${isFeatured ? 'btn-primary' : 'btn-outline-primary'} w-100 py-2 fw-bold" 
+                            <button class="btn ${isFeatured ? 'btn-primary' : 'btn-outline-primary'} w-100 py-2 fw-bold"
                                     onclick="selectPackageForBooking(${pkg.id}, '${escapeForJs(pkg.title)}')">
                                 <i class="bi bi-camera me-1"></i> Book Package
                             </button>
@@ -1220,8 +1538,8 @@ async function loadCustomerBookings() {
                             <strong class="text-primary small">LKR ${amountFormatted}</strong>
                         </td>
                         <td>
-                            ${balanceVal > 0 
-                                ? `<span class="badge bg-warning-subtle text-warning fw-bold border border-warning-subtle">LKR ${balanceFormatted}</span>` 
+                            ${balanceVal > 0
+                                ? `<span class="badge bg-warning-subtle text-warning fw-bold border border-warning-subtle">LKR ${balanceFormatted}</span>`
                                 : `<span class="text-muted small">LKR 0.00</span>`}
                         </td>
                         <td><span class="badge ${badgeClass}">${escapeHtml(b.bookingStatus || 'Pending')}</span></td>
@@ -1421,9 +1739,13 @@ function handleUrlIntentions() {
     const urlParams = new URLSearchParams(window.location.search);
     const bookPackageId = urlParams.get('bookPackage');
     const isCustomBooking = urlParams.get('customBooking');
+    const viewAlbumId = urlParams.get('viewAlbum');
     const hash = window.location.hash;
 
-    if (bookPackageId) {
+    if (viewAlbumId && /^[1-9]\d*$/.test(viewAlbumId)) {
+        openCustomerAlbum(Number(viewAlbumId));
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+    } else if (bookPackageId) {
         if (currentUser) {
             selectPackageForBooking(parseInt(bookPackageId));
         } else {
@@ -1506,6 +1828,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Attach listeners for live datewise booked timeslot checking
     setupBookedSlotListeners();
+
+    // Public Overview albums can be opened without logging in.
+    document.getElementById('overviewAlbumsGrid')?.addEventListener('click', event => {
+        const card = event.target.closest('[data-overview-album-id]');
+        if (card) openCustomerAlbum(Number(card.dataset.overviewAlbumId));
+    });
+
+    document.getElementById('customerGalleryAlbumsGrid')?.addEventListener('click', event => {
+        const card = event.target.closest('[data-customer-gallery-album]');
+        if (card) openBookedEventAlbum(Number(card.dataset.customerGalleryAlbum));
+    });
 
     // Check session on page load
     checkSession();

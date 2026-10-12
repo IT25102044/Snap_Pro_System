@@ -416,6 +416,72 @@
       70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
       100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
     }
+    /* Read-only albums on the Customer Overview */
+    .overview-album-card {
+      display: block;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      overflow: hidden;
+      background: #fff;
+      color: var(--dark-text);
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+
+    .overview-album-card:hover, .overview-album-card:focus-visible {
+      transform: translateY(-5px);
+      border-color: #93c5fd;
+      box-shadow: 0 18px 35px -12px rgba(15, 23, 42, 0.2);
+    }
+
+    .overview-album-cover {
+      position: relative;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(140deg, #1e3a8a, #0f172a 60%, #0e7490);
+      color: #bfdbfe;
+      overflow: hidden;
+    }
+
+    .overview-album-cover img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+
+    .overview-album-card:hover .overview-album-cover img { transform: scale(1.06); }
+
+    .overview-album-count {
+      position: absolute;
+      z-index: 1;
+      bottom: 12px;
+      left: 12px;
+      color: #fff;
+      background: rgba(15, 23, 42, 0.78);
+      border-radius: 20px;
+      padding: 5px 11px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .overview-album-action { color: var(--primary-accent); font-size: 13px; font-weight: 700; }
+
+    .customer-album-photo {
+      width: 100%;
+      height: 255px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: #0f172a;
+    }
   </style>
 </head>
 <body>
@@ -452,7 +518,7 @@
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#gallery" data-bs-toggle="tab" id="navLinkGallery">
+            <a class="nav-link" href="#gallery" data-bs-toggle="tab" id="navLinkGallery" onclick="return handleEventPhotosNavClick(event)">
               <i class="bi bi-images me-2"></i> Event Photos
             </a>
           </li>
@@ -551,7 +617,7 @@
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#gallery" data-bs-toggle="tab" data-bs-dismiss="offcanvas">
+            <a class="nav-link" href="#gallery" data-bs-toggle="tab" data-bs-dismiss="offcanvas" onclick="return handleEventPhotosNavClick(event)">
               <i class="bi bi-images me-2"></i> Event Photos
             </a>
           </li>
@@ -601,7 +667,7 @@
 
         <!-- TAB 1: OVERVIEW & HOME PAGE -->
         <div class="tab-pane fade show active" id="dashboard">
-          
+
           <!-- 1. CREATIVE HOME HERO BANNER -->
           <div class="hero-section mb-5 position-relative">
             <div class="hero-pattern"></div>
@@ -621,7 +687,7 @@
                   <p class="lead text-light opacity-90 mb-4" style="max-width: 620px; font-size: 1.05rem; font-weight: 400; line-height: 1.6;">
                     From luxury weddings and corporate galas to vibrant music concerts and private celebrations — SnapPro delivers magazine-grade visual storytelling with Sri Lanka's finest senior photographers.
                   </p>
-                  
+
                   <!-- Hero Action Buttons -->
                   <div class="d-flex flex-wrap gap-3">
                     <button class="btn btn-primary btn-lg px-4 py-2 fw-bold shadow-sm d-flex align-items-center" onclick="switchTab('packages')">
@@ -700,6 +766,21 @@
             </div>
           </div>
 
+          <!-- LIVE PHOTO ALBUMS: Existing photographer albums, view-only for customers -->
+          <section id="overviewAlbums" class="mb-5" aria-labelledby="overviewAlbumsTitle">
+            <div class="text-center mb-4">
+              <span class="badge bg-primary-subtle text-primary fw-bold px-3 py-2 rounded-pill text-uppercase" style="font-size: 11px;">Our Photo Albums</span>
+              <h2 class="fw-bold mt-2 mb-2" id="overviewAlbumsTitle">Moments Captured by SnapPro</h2>
+              <p class="text-muted mb-0">Explore albums created by our photographers. Open any album and browse its photos without signing in.</p>
+            </div>
+            <div class="row g-4" id="overviewAlbumsGrid" aria-live="polite">
+              <div class="col-12 text-center text-muted py-4">
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-label="Loading albums"></div>
+                Loading photo albums...
+              </div>
+            </div>
+          </section>
+
           <!-- 2. PERSONALIZED LOGGED-IN CUSTOMER HUB (Shown dynamically when logged in) -->
           <div id="customerPersonalHub" class="mb-5" style="display: none;">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4 pb-2 border-bottom">
@@ -771,20 +852,20 @@
               <div class="table-responsive">
                 <table class="table align-middle table-hover mb-0">
                   <thead class="table-light">
-                    <tr style="font-size: 12px;">
-                      <th>BOOKING ID</th>
-                      <th>EVENT TITLE</th>
-                      <th>PACKAGE</th>
-                      <th>EVENT DATE</th>
-                      <th>TOTAL (LKR)</th>
-                      <th>STATUS</th>
-                      <th class="text-end">ACTION</th>
-                    </tr>
+                  <tr style="font-size: 12px;">
+                    <th>BOOKING ID</th>
+                    <th>EVENT TITLE</th>
+                    <th>PACKAGE</th>
+                    <th>EVENT DATE</th>
+                    <th>TOTAL (LKR)</th>
+                    <th>STATUS</th>
+                    <th class="text-end">ACTION</th>
+                  </tr>
                   </thead>
                   <tbody id="dashboardRecentTable">
-                    <tr>
-                      <td colspan="7" class="text-center text-muted py-4">Loading recent bookings...</td>
-                    </tr>
+                  <tr>
+                    <td colspan="7" class="text-center text-muted py-4">Loading recent bookings...</td>
+                  </tr>
                   </tbody>
                 </table>
               </div>
@@ -1098,20 +1179,20 @@
               <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0" id="customerBookingList">
                   <thead class="table-light">
-                    <tr style="font-size: 13px;">
-                      <th>EVENT TITLE</th>
-                      <th>LOCATION</th>
-                      <th>DATE & TIME</th>
-                      <th>PACKAGE / ADVANCE</th>
-                      <th>BALANCE (AT EVENT)</th>
-                      <th>STATUS</th>
-                      <th class="text-end">ACTION</th>
-                    </tr>
+                  <tr style="font-size: 13px;">
+                    <th>EVENT TITLE</th>
+                    <th>LOCATION</th>
+                    <th>DATE & TIME</th>
+                    <th>PACKAGE / ADVANCE</th>
+                    <th>BALANCE (AT EVENT)</th>
+                    <th>STATUS</th>
+                    <th class="text-end">ACTION</th>
+                  </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td colspan="7" class="text-center text-muted py-4">Loading your bookings...</td>
-                    </tr>
+                  <tr>
+                    <td colspan="7" class="text-center text-muted py-4">Loading your bookings...</td>
+                  </tr>
                   </tbody>
                 </table>
               </div>
@@ -1141,67 +1222,26 @@
           </div>
         </div>
 
-        <!-- TAB 4: EVENT GALLERY (Publicly Accessible) -->
+        <!-- TAB 4: CUSTOMER EVENT PHOTOS (ONLY COMPLETED BOOKINGS) -->
         <div class="tab-pane fade" id="gallery">
           <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
-              <h3 class="fw-bold mb-1">Deliverables & Event Gallery</h3>
-              <p class="text-muted mb-0">Browse and download sample deliverable photos uploaded by our senior event photographers.</p>
+              <h3 class="fw-bold mb-1">My Event Photos</h3>
+              <p class="text-muted mb-0">View and download photos from albums linked to your completed photography bookings.</p>
             </div>
-            <button class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i> Download All ZIP</button>
+            <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2"><i class="bi bi-lock me-1"></i> Private Customer Gallery</span>
           </div>
 
-          <!-- Album Filter Selector -->
-          <div class="bg-white p-3 rounded-3 border mb-4">
-            <div class="row align-items-center">
-              <div class="col-md-6">
-                <label class="form-label small fw-bold text-muted">Select Event Album:</label>
-                <select class="form-select">
-                  <option selected>Tech Symposium Keynote - Completed (24 Photos)</option>
-                  <option>Corporate Annual Gala 2025 - Archived (118 Photos)</option>
-                  <option>Beachside Sunset Wedding - Completed (85 Photos)</option>
-                </select>
-              </div>
-            </div>
+          <div id="customerGalleryGuestPrompt" class="card border-0 shadow-sm rounded-3 p-5 text-center">
+            <i class="bi bi-lock-fill display-5 text-primary mb-2"></i>
+            <h5 class="fw-bold">Sign in to view your event photos</h5>
+            <p class="text-muted">Your completed-booking albums are only visible after signing in.</p>
+            <div><button type="button" class="btn btn-primary" onclick="showLoginPrompt('Please sign in to view photos from your completed bookings.', 'customer-dashboard.html#gallery')">Sign In Required</button></div>
           </div>
 
-          <!-- Photos Grid -->
-          <div class="row g-3">
-            <div class="col-6 col-md-4 col-lg-3">
-              <div class="card h-100 border-0 shadow-sm p-2">
-                <img src="https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=500&q=80" class="gallery-img mb-2" alt="Keynote Speaker" />
-                <div class="d-flex justify-content-between align-items-center px-1">
-                  <small class="text-truncate fw-semibold">Keynote_01.jpg</small>
-                  <a href="#" class="text-primary"><i class="bi bi-arrow-down-circle fs-5"></i></a>
-                </div>
-              </div>
-            </div>
-            <div class="col-6 col-md-4 col-lg-3">
-              <div class="card h-100 border-0 shadow-sm p-2">
-                <img src="https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=500&q=80" class="gallery-img mb-2" alt="Stage Audience" />
-                <div class="d-flex justify-content-between align-items-center px-1">
-                  <small class="text-truncate fw-semibold">Audience_Wide.jpg</small>
-                  <a href="#" class="text-primary"><i class="bi bi-arrow-down-circle fs-5"></i></a>
-                </div>
-              </div>
-            </div>
-            <div class="col-6 col-md-4 col-lg-3">
-              <div class="card h-100 border-0 shadow-sm p-2">
-                <img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=500&q=80" class="gallery-img mb-2" alt="Panel Discussion" />
-                <div class="d-flex justify-content-between align-items-center px-1">
-                  <small class="text-truncate fw-semibold">Panel_QandA.jpg</small>
-                  <a href="#" class="text-primary"><i class="bi bi-arrow-down-circle fs-5"></i></a>
-                </div>
-              </div>
-            </div>
-            <div class="col-6 col-md-4 col-lg-3">
-              <div class="card h-100 border-0 shadow-sm p-2">
-                <img src="https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=500&q=80" class="gallery-img mb-2" alt="Networking Lunch" />
-                <div class="d-flex justify-content-between align-items-center px-1">
-                  <small class="text-truncate fw-semibold">Breakout_Discussion.jpg</small>
-                  <a href="#" class="text-primary"><i class="bi bi-arrow-down-circle fs-5"></i></a>
-                </div>
-              </div>
+          <div id="customerGalleryAuthContent" style="display: none;">
+            <div class="row g-4" id="customerGalleryAlbumsGrid" aria-live="polite">
+              <div class="col-12 text-center text-muted py-4">Loading your completed event albums...</div>
             </div>
           </div>
         </div>
@@ -1251,17 +1291,17 @@
                 <div class="table-responsive">
                   <table class="table table-hover align-middle mb-0" id="completedBookingsTable">
                     <thead class="table-light">
-                      <tr>
-                        <th class="ps-4">Booking & Event</th>
-                        <th>Service Package</th>
-                        <th>Shoot Date & Time</th>
-                        <th>Venue Location</th>
-                        <th>Status</th>
-                        <th class="text-end pe-4">Action</th>
-                      </tr>
+                    <tr>
+                      <th class="ps-4">Booking & Event</th>
+                      <th>Service Package</th>
+                      <th>Shoot Date & Time</th>
+                      <th>Venue Location</th>
+                      <th>Status</th>
+                      <th class="text-end pe-4">Action</th>
+                    </tr>
                     </thead>
                     <tbody id="completedBookingsTableBody">
-                      <!-- Populated dynamically by renderCompletedBookingsForFeedback() -->
+                    <!-- Populated dynamically by renderCompletedBookingsForFeedback() -->
                     </tbody>
                   </table>
                 </div>
@@ -1345,6 +1385,30 @@
         <button type="button" class="btn btn-light border flex-grow-1" data-bs-dismiss="modal">Continue Browsing</button>
         <button type="button" class="btn btn-outline-primary flex-grow-1" onclick="handlePromptRegister()">Create Account</button>
         <button type="button" class="btn btn-primary flex-grow-1 fw-bold" onclick="handlePromptLogin()">Sign In Now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: READ-ONLY CUSTOMER ALBUM PHOTO VIEWER -->
+<div class="modal fade" id="customerAlbumModal" tabindex="-1" aria-labelledby="customerAlbumTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header px-4 py-3 bg-light">
+        <div>
+          <h5 class="modal-title fw-bold" id="customerAlbumTitle">Photo Album</h5>
+          <small class="text-muted" id="customerAlbumSummary">Photo gallery - view only</small>
+        </div>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+          <a id="customerAlbumDownloadZip" class="btn btn-outline-primary btn-sm" style="display:none"
+             aria-label="Download all photos from this event album as ZIP">
+            <i class="bi bi-file-earmark-zip me-1"></i>Download All ZIP
+          </a>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close album"></button>
+        </div>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-3" id="customerAlbumPhotos" aria-live="polite"></div>
       </div>
     </div>
   </div>
@@ -1626,7 +1690,7 @@
       </div>
       <div class="modal-body px-4 py-4">
         <div class="row g-4">
-          
+
           <!-- Booking Status Progress Tracker & Progress Bar -->
           <div class="col-12">
             <div class="status-tracker-container">
