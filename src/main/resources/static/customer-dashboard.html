@@ -457,7 +457,7 @@
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#feedback" data-bs-toggle="tab" id="navLinkFeedback">
+            <a class="nav-link" href="#feedback" data-bs-toggle="tab" id="navLinkFeedback" onclick="handleFeedbackNavClick(event)">
               <i class="bi bi-chat-left-quote me-2"></i> Reviews & Feedback
             </a>
           </li>
@@ -556,7 +556,7 @@
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#feedback" data-bs-toggle="tab" data-bs-dismiss="offcanvas">
+            <a class="nav-link" href="#feedback" data-bs-toggle="tab" onclick="handleFeedbackNavClick(event)" data-bs-dismiss="offcanvas">
               <i class="bi bi-chat-left-quote me-2"></i> Reviews & Feedback
             </a>
           </li>
@@ -1206,39 +1206,95 @@
           </div>
         </div>
 
-        <!-- TAB 5: REVIEWS & FEEDBACK (Publicly Accessible) -->
+        <!-- TAB 5: REVIEWS & FEEDBACK (Gated / Accessible when logged in) -->
         <div class="tab-pane fade" id="feedback">
-          <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-            <div>
-              <h3 class="fw-bold mb-1">Feedback & Reviews</h3>
-              <p class="text-muted mb-0">Share your shooting experience with our team or browse customer testimonials.</p>
-            </div>
-            <button class="btn btn-primary" onclick="openReviewModal()">
-              <i class="bi bi-star me-1"></i> Submit Review
-            </button>
+          <div class="mb-4">
+            <h3 class="fw-bold mb-1">Feedback & Reviews</h3>
+            <p class="text-muted mb-0">Share your shooting experience with our team or browse customer testimonials.</p>
           </div>
 
-          <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-body p-4">
-              <h6 class="fw-bold mb-3">Published Customer Feedback</h6>
-              <div class="border rounded p-3 mb-3 bg-light">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <div>
-                    <strong>Tech Symposium Keynote</strong>
-                    <div class="text-warning small mt-1">
-                      <i class="bi bi-star-fill"></i>
-                      <i class="bi bi-star-fill"></i>
-                      <i class="bi bi-star-fill"></i>
-                      <i class="bi bi-star-fill"></i>
-                      <i class="bi bi-star-fill"></i>
-                      <span class="text-dark ms-2 fw-semibold">5.0 / 5</span>
-                    </div>
-                  </div>
-                  <span class="badge bg-success-subtle text-success">Verified Client</span>
+          <!-- GUEST EMPTY STATE (Shown if not logged in) -->
+          <div id="feedbackGuestPrompt" class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white" style="display: none;">
+            <div class="d-inline-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle mb-3 mx-auto" style="width: 64px; height: 64px;">
+              <i class="bi bi-lock-fill fs-2"></i>
+            </div>
+            <h4 class="fw-bold mb-2">Sign In Required for Reviews & Feedback</h4>
+            <p class="text-muted mb-4 mx-auto" style="max-width: 480px;">
+              Please sign in with your SnapPro account to view reviews, share ratings, and submit feedback for your photography sessions.
+            </p>
+            <div class="d-flex justify-content-center gap-3">
+              <a href="login.html" class="btn btn-primary px-4 py-2 fw-semibold" onclick="sessionStorage.setItem('postLoginRedirect', 'customer-dashboard.html#feedback')">
+                <i class="bi bi-box-arrow-in-right me-2"></i> Sign In Now
+              </a>
+              <a href="register.html" class="btn btn-outline-primary px-4 py-2 fw-semibold">
+                <i class="bi bi-person-plus me-2"></i> Create Account
+              </a>
+            </div>
+          </div>
+
+          <!-- LOGGED IN FEEDBACK CONTENT -->
+          <div id="feedbackContentCard">
+            <!-- 1. COMPLETED BOOKINGS AWAITING REVIEW -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+              <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                  <h5 class="fw-bold mb-1 text-dark d-flex align-items-center">
+                    <i class="bi bi-patch-check-fill text-success me-2 fs-5"></i> Completed Shoots Eligible for Review
+                  </h5>
+                  <p class="text-muted small mb-0">Rate your completed photography shoots and share feedback on your lead photographer.</p>
                 </div>
-                <p class="text-muted small mb-2">"The photographer arrived 30 minutes early, coordinated with our sound crew smoothly, and delivered the preview photos the same evening! Exceptional service."</p>
-                <div class="bg-white p-2 rounded border-start border-3 border-primary small">
-                  <span class="fw-bold text-primary">Client Relations Officer:</span> Thank you for choosing SnapPro Amanda! It was our pleasure covering your keynote symposium.
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fw-semibold" id="completedBookingsCountBadge">
+                  0 Completed Shoots
+                </span>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0" id="completedBookingsTable">
+                    <thead class="table-light">
+                      <tr>
+                        <th class="ps-4">Booking & Event</th>
+                        <th>Service Package</th>
+                        <th>Shoot Date & Time</th>
+                        <th>Venue Location</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="completedBookingsTableBody">
+                      <!-- Populated dynamically by renderCompletedBookingsForFeedback() -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. PUBLISHED TESTIMONIALS & FEEDBACK -->
+            <div class="card border-0 shadow-sm rounded-4">
+              <div class="card-header bg-white border-bottom py-3 px-4">
+                <h6 class="fw-bold mb-0 text-dark">
+                  <i class="bi bi-chat-quote-fill text-primary me-2"></i> Published Customer Feedback
+                </h6>
+              </div>
+              <div class="card-body p-4">
+                <div class="border rounded-3 p-3 mb-3 bg-light">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                      <strong class="text-dark">Tech Symposium Keynote</strong>
+                      <div class="text-warning small mt-1">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <span class="text-dark ms-2 fw-semibold">5.0 / 5</span>
+                      </div>
+                    </div>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">Verified Client</span>
+                  </div>
+                  <p class="text-muted small mb-2">"The photographer arrived 30 minutes early, coordinated with our sound crew smoothly, and delivered the preview photos the same evening! Exceptional service."</p>
+                  <div class="bg-white p-2 rounded-2 border-start border-3 border-primary small">
+                    <span class="fw-bold text-primary">Client Relations Officer:</span> Thank you for choosing SnapPro Amanda! It was our pleasure covering your keynote symposium.
+                  </div>
                 </div>
               </div>
             </div>
@@ -1499,20 +1555,38 @@
 <!-- MODAL: LEAVE REVIEW & FEEDBACK -->
 <div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow rounded-4">
-      <div class="modal-header border-bottom">
-        <h5 class="modal-title fw-bold">Leave Service Feedback</h5>
+    <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+      <div class="modal-header border-bottom bg-light px-4 py-3">
+        <div class="d-flex align-items-center">
+          <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm" style="width: 38px; height: 38px;">
+            <i class="bi bi-star-fill text-warning"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold mb-0">Leave Service Feedback</h5>
+            <small class="text-muted">Rate your event experience & photographer</small>
+          </div>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form onsubmit="handleReviewSubmit(event)">
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label fw-semibold small">Event / Shoot Title</label>
-            <input type="text" class="form-control" placeholder="e.g. Tech Symposium Keynote" required />
+        <div class="modal-body p-4">
+          <input type="hidden" id="reviewBookingId" value="" />
+
+          <!-- Selected Booking Reference Card -->
+          <div id="reviewBookingBanner" class="p-3 mb-3 rounded-3 bg-primary-subtle border border-primary-subtle d-flex align-items-center justify-content-between">
+            <div>
+              <span class="badge bg-primary mb-1" id="reviewBookingRef">#EVT-BOOKING</span>
+              <h6 class="fw-bold mb-0 text-dark" id="reviewBookingEvent">Event Shoot</h6>
+              <small class="text-muted" id="reviewBookingMeta">Date & Service Package</small>
+            </div>
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px;">
+              <i class="bi bi-camera-fill fs-5"></i>
+            </div>
           </div>
+
           <div class="mb-3">
             <label class="form-label fw-semibold small">Rating (1 to 5 Stars)</label>
-            <select class="form-select" id="reviewRating" required>
+            <select class="form-select rounded-3" id="reviewRating" required>
               <option value="5">★★★★★ (5/5) - Excellent</option>
               <option value="4">★★★★☆ (4/5) - Good</option>
               <option value="3">★★★☆☆ (3/5) - Average</option>
@@ -1522,12 +1596,12 @@
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold small">Your Review</label>
-            <textarea class="form-control" id="reviewComments" rows="3" placeholder="Describe the photographer punctuality, photo quality, and customer support..." required></textarea>
+            <textarea class="form-control rounded-3" id="reviewComments" rows="3" placeholder="Describe the photographer punctuality, photo quality, and customer support..." required></textarea>
           </div>
         </div>
-        <div class="modal-footer border-top">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-primary fw-semibold">Submit Feedback</button>
+        <div class="modal-footer border-top px-4 py-3 bg-light">
+          <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary fw-semibold px-4">Submit Feedback</button>
         </div>
       </form>
     </div>
@@ -1685,17 +1759,5 @@
 <!-- Customer Dashboard JS -->
 <script src="js/Admin&Customer/customer-dashboard.js"></script>
 
-<script>
-  // Handle UC-02: Review Submission
-  function handleReviewSubmit(event) {
-    event.preventDefault();
-    const modalEl = document.getElementById('reviewModal');
-    const modalInstance = bootstrap.Modal.getInstance(modalEl);
-    if (modalInstance) {
-      modalInstance.hide();
-    }
-    alert('Thank you! Your review has been submitted for verification.');
-  }
-</script>
 </body>
 </html>
