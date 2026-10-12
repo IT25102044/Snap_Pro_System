@@ -8,6 +8,7 @@ import com.event.snappro.SnapPro.entity.*;
 import com.event.snappro.SnapPro.repository.*;
 import com.event.snappro.SnapPro.service.BookingService;
 import com.event.snappro.SnapPro.service.EmailService;
+import com.event.snappro.SnapPro.strategy.payment.PaymentContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingStatusRepository bookingStatusRepository;
     private final PaymentMethodRepository paymentMethodRepository;
     private final EmailService emailService;
+    private final PaymentContext paymentContext;
     private final org.modelmapper.ModelMapper modelMapper;
 
     @Override
@@ -163,6 +165,13 @@ public class BookingServiceImpl implements BookingService {
 
         EventBookingEntity saved = eventBookingRepository.save(bookingEntity);
         BookingResponseDTO responseDTO = convertToDTO(saved);
+
+        // Execute Strategy Pattern: Process payment interchangeable algorithm (Cash / Card)
+        String chosenMethod = (saved.getPaymentMethod() != null && saved.getPaymentMethod().getPaymentMethod() != null)
+                ? saved.getPaymentMethod().getPaymentMethod()
+                : "Cash";
+        paymentContext.setStrategyByMethodName(chosenMethod);
+        paymentContext.executePayment(saved, saved.getTotalAmount() != null ? saved.getTotalAmount() : 0.0);
 
         // Dispatch asynchronous booking confirmation email to customer
         String fullName = (customer.getFirstName() != null ? customer.getFirstName() : "") + " " +
