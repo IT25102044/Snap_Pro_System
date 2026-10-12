@@ -4,10 +4,11 @@ import com.event.snappro.SnapPro.dto.EventPhotoResponseDTO;
 import com.event.snappro.SnapPro.dto.EventPhotoUpdateDTO;
 import com.event.snappro.SnapPro.entity.EventCatalog;
 import com.event.snappro.SnapPro.entity.EventPhoto;
-import com.event.snappro.SnapPro.repository.EventCatalogRepository;
 import com.event.snappro.SnapPro.repository.EventPhotoRepository;
 import com.event.snappro.SnapPro.service.EventPhotoService;
 import com.event.snappro.SnapPro.service.PhotographerProfileService;
+import com.event.snappro.SnapPro.repository.EventCatalogRepository;
+import com.event.snappro.SnapPro.util.PhotoUploadRules;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,7 +31,7 @@ public class EventPhotoServiceImpl implements EventPhotoService {
         private final EventCatalogRepository eventCatalogRepository;
         private final PhotographerProfileService photographerProfileService;
 
-        @Value("${app.upload.dir:uploads/event-photos}")
+        @Value("${app.upload.dir:src/main/resources/photos}")
         private String uploadDirectory;
 
         public EventPhotoServiceImpl(
@@ -103,11 +104,13 @@ public class EventPhotoServiceImpl implements EventPhotoService {
                 }
 
                 // 3. Check maximum size - 10 MB
-                long maxFileSize = 10L * 1024 * 1024;
+                long maxFileSize = PhotoUploadRules
+                        .getInstance()
+                        .getMaxFileSize();
 
                 if (file.getSize() > maxFileSize) {
                         throw new IllegalArgumentException(
-                                        "Photo size must not exceed 10 MB.");
+                                "Photo size must not exceed 10 MB.");
                 }
 
                 // 4. Get original filename

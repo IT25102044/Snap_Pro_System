@@ -11,6 +11,7 @@ import com.event.snappro.SnapPro.repository.BookingStatusRepository;
 import com.event.snappro.SnapPro.repository.EventBookingRepository;
 import com.event.snappro.SnapPro.repository.PaymentMethodRepository;
 import com.event.snappro.SnapPro.service.AdminBookingService;
+import com.event.snappro.SnapPro.strategy.payment.PaymentContext;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -27,6 +28,7 @@ public class AdminBookingServiceImpl implements AdminBookingService {
     private final EventBookingRepository eventBookingRepository;
     private final BookingStatusRepository bookingStatusRepository;
     private final PaymentMethodRepository paymentMethodRepository;
+    private final PaymentContext paymentContext;
     private final ModelMapper modelMapper;
 
     @Override
@@ -78,6 +80,32 @@ public class AdminBookingServiceImpl implements AdminBookingService {
         if (booking.getStartTime() != null && booking.getEndTime() != null && !booking.getEndTime().isAfter(booking.getStartTime())) {
             return new ResponseDTO(false, "Event end time must be after start time.", null);
         }
+
+        // Update Booking Status
+        if (dto.getBookingStatusId() != null || (dto.getBookingStatus() != null && !dto.getBookingStatus().trim().isEmpty())) {
+            BookingStatusEntity resolvedStatus = resolveBookingStatus(dto.getBookingStatusId(), dto.getBookingStatus());
+            if (resolvedStatus != null) {
+                booking.setBookingStatus(resolvedStatus);
+            }
+        }
+
+        // Check for time slot overlap with other active bookings (unless this booking is cancelled)
+        boolean isCancelled = booking.getBookingStatus() != null && "cancelled".equalsIgnoreCase(booking.getBookingStatus().getBookingStatus());
+        if (!isCancelled && booking.getEventDate() != null && booking.getStartTime() != null && booking.getEndTime() != null) {
+            List<EventBookingEntity> activeOnDate = eventBookingRepository.findActiveBookingsByDate(booking.getEventDate());
+            for (EventBookingEntity other : activeOnDate) {
+                if (!other.getId().equals(booking.getId()) && other.getStartTime() != null && other.getEndTime() != null) {
+                    if (booking.getStartTime().isBefore(other.getEndTime()) && booking.getEndTime().isAfter(other.getStartTime())) {
+                        String cStart = other.getStartTime().toString().substring(0, 5);
+                        String cEnd = other.getEndTime().toString().substring(0, 5);
+                        return new ResponseDTO(false,
+                                "Time Slot Conflict: The updated time (" + booking.getStartTime().toString().substring(0, 5) + " - " + booking.getEndTime().toString().substring(0, 5) +
+                                ") on " + booking.getEventDate() + " overlaps with an existing booking #EVT-" + other.getId() + " (" + cStart + " - " + cEnd + ").", null);
+                    }
+                }
+            }
+        }
+
         if (dto.getCustomRequirements() != null) {
             booking.setCustomRequirements(dto.getCustomRequirements().trim());
         }
@@ -94,19 +122,15 @@ public class AdminBookingServiceImpl implements AdminBookingService {
             booking.setBalanceAmount(dto.getBalanceAmount());
         }
 
-        // Update Booking Status
-        if (dto.getBookingStatusId() != null || (dto.getBookingStatus() != null && !dto.getBookingStatus().trim().isEmpty())) {
-            BookingStatusEntity resolvedStatus = resolveBookingStatus(dto.getBookingStatusId(), dto.getBookingStatus());
-            if (resolvedStatus != null) {
-                booking.setBookingStatus(resolvedStatus);
-            }
-        }
-
         // Update Payment Method
         if (dto.getPaymentMethodId() != null || (dto.getPaymentMethod() != null && !dto.getPaymentMethod().trim().isEmpty())) {
             PaymentMethodEntity resolvedPayment = resolvePaymentMethod(dto.getPaymentMethodId(), dto.getPaymentMethod());
             if (resolvedPayment != null) {
                 booking.setPaymentMethod(resolvedPayment);
+
+                // Execute Strategy Pattern for updated payment method
+                paymentContext.setStrategyByMethodName(resolvedPayment.getPaymentMethod());
+                paymentContext.executePayment(booking, booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0);
             }
         }
 
