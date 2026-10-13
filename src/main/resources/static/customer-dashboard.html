@@ -1818,10 +1818,31 @@
   </div>
 </div>
 
+<!-- MODAL: FULL PACKAGE IMAGE PREVIEW -->
+<div class="modal fade" id="fullPackageImageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg overflow-hidden rounded-4">
+      <div class="modal-header border-bottom px-4 py-3 bg-light">
+        <h5 class="modal-title fw-bold text-truncate" id="fullPackageImageModalTitle">Package Image</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0 bg-dark d-flex align-items-center justify-content-center" style="min-height: 420px; max-height: 80vh; overflow: hidden;">
+        <img id="fullPackageImageModalImg" src="" alt="Full Package Cover" class="img-fluid" style="max-height: 80vh; width: auto; max-width: 100%; object-fit: contain; margin: auto;" />
+      </div>
+      <div class="modal-footer border-top px-4 py-2 bg-light d-flex justify-content-between align-items-center">
+        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Full resolution package cover</small>
+        <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
 <!-- Bootstrap 5 JS Bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Customer Dashboard JS -->
-<script src="js/Admin&Customer/customer-dashboard.js"></script>
+<script src="js/Admin&Customer/customer-dashboard.js?v=2.0"></script>
 
 </body>
 </html>

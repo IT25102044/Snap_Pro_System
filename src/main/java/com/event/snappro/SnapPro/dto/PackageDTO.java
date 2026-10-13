@@ -19,6 +19,8 @@ public class PackageDTO {
     private Double price;
     private BigDecimal discountRate;
     private String status;
+    private String imageUrl;
+    private java.util.List<String> imageUrls;
     private Integer createdById;
     private String createdByName;
     private LocalDateTime createdAt;
