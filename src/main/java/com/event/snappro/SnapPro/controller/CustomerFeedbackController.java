@@ -1,8 +1,10 @@
 
 package com.event.snappro.SnapPro.controller;
 
+import com.event.snappro.SnapPro.dto.FeedbackCreateDTO;
 import com.event.snappro.SnapPro.entity.CustomerFeedbackEntity;
 import com.event.snappro.SnapPro.service.CustomerFeedbackService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,7 +12,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/cro/feedback")
-@CrossOrigin(origins = "*")
 public class CustomerFeedbackController {
 
     private final CustomerFeedbackService customerFeedbackService;
@@ -18,6 +19,12 @@ public class CustomerFeedbackController {
     public CustomerFeedbackController(
             CustomerFeedbackService customerFeedbackService) {
         this.customerFeedbackService = customerFeedbackService;
+    }
+
+    @PostMapping
+    public ResponseEntity<CustomerFeedbackEntity> createFeedback(
+            @Valid @RequestBody FeedbackCreateDTO dto) {
+        return ResponseEntity.ok(customerFeedbackService.createFeedback(dto));
     }
 
     @GetMapping

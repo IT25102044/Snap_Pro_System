@@ -36,6 +36,9 @@ public interface CustomerFeedbackRepository
     List<CustomerFeedbackEntity>
     findByBookingIdAndIsDeletedFalse(Integer bookingId);
 
+    // Find any feedback by booking (regardless of deleted status, to respect booking_id_UNIQUE constraint)
+    Optional<CustomerFeedbackEntity> findByBookingId(Integer bookingId);
+
     // Find a specific non-deleted feedback
     Optional<CustomerFeedbackEntity>
     findByIdAndIsDeletedFalse(Integer id);

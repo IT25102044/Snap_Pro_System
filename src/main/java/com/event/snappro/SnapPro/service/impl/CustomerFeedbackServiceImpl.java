@@ -1,6 +1,7 @@
 
 package com.event.snappro.SnapPro.service.impl;
 
+import com.event.snappro.SnapPro.dto.FeedbackCreateDTO;
 import com.event.snappro.SnapPro.entity.CustomerFeedbackEntity;
 import com.event.snappro.SnapPro.repository.CustomerFeedbackRepository;
 import com.event.snappro.SnapPro.repository.FeedbackStatusRepository;
@@ -8,6 +9,7 @@ import com.event.snappro.SnapPro.service.CustomerFeedbackService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
@@ -21,6 +23,35 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
     ) {
         this.customerFeedbackRepository = customerFeedbackRepository;
         this.feedbackStatusRepository = feedbackStatusRepository;
+    }
+
+    @Override
+    public CustomerFeedbackEntity createFeedback(FeedbackCreateDTO dto) {
+        // Check if a feedback already exists for this booking ID (including soft-deleted ones due to UNIQUE constraint)
+        Optional<CustomerFeedbackEntity> existingOpt = customerFeedbackRepository.findByBookingId(dto.getBookingId());
+        CustomerFeedbackEntity feedback;
+
+        if (existingOpt.isPresent()) {
+            feedback = existingOpt.get();
+            feedback.setCustomerId(dto.getCustomerId());
+            feedback.setIsDeleted(false);
+            feedback.setEscalatedToManager(false);
+            feedback.setEscalationRemarks(null);
+            feedback.setCroResponse(null);
+            feedback.setHandledBy(null);
+        } else {
+            feedback = new CustomerFeedbackEntity();
+            feedback.setCustomerId(dto.getCustomerId());
+            feedback.setBookingId(dto.getBookingId());
+            feedback.setIsDeleted(false);
+            feedback.setEscalatedToManager(false);
+        }
+
+        feedback.setRating(dto.getRating());
+        feedback.setReviewText(dto.getReviewText());
+        feedback.setFeedbackStatusId(1); // Pending
+
+        return customerFeedbackRepository.save(feedback);
     }
 
     @Override

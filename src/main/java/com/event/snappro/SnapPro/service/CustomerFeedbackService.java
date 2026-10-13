@@ -1,11 +1,14 @@
 
 package com.event.snappro.SnapPro.service;
 
+import com.event.snappro.SnapPro.dto.FeedbackCreateDTO;
 import com.event.snappro.SnapPro.entity.CustomerFeedbackEntity;
 
 import java.util.List;
 
 public interface CustomerFeedbackService {
+
+    CustomerFeedbackEntity createFeedback(FeedbackCreateDTO dto);
 
     List<CustomerFeedbackEntity> getAllFeedback();
 

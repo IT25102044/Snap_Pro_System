@@ -141,7 +141,7 @@ function setupCustomerUI(user) {
     if (feedbackPrompt) feedbackPrompt.style.display = 'none';
     if (feedbackCard) feedbackCard.style.display = 'block';
 
-    renderCompletedBookingsForFeedback(customerBookings);
+    loadCustomerFeedbackData();
 
     const galleryContent = document.getElementById('customerGalleryAuthContent');
     const galleryGuest = document.getElementById('customerGalleryGuestPrompt');
@@ -236,6 +236,7 @@ function handleFeedbackNavClick(event) {
         showLoginPrompt('Please sign in to view and submit customer reviews and service feedback.', 'customer-dashboard.html#feedback');
         return false;
     }
+    loadCustomerFeedbackData();
     return true;
 }
 
@@ -751,6 +752,90 @@ function openCustomBookingModal() {
 }
 
 // 7. Reviews & Feedback System (Completed Bookings Gating & Submission)
+let customerFeedbackList = [];
+
+async function loadCustomerFeedbackData() {
+    try {
+        const response = await fetch('/api/cro/feedback');
+        if (response.ok) {
+            const data = await response.json();
+            customerFeedbackList = Array.isArray(data) ? data : [];
+        }
+    } catch (err) {
+        console.warn('Could not fetch customer feedback:', err);
+    }
+    renderCompletedBookingsForFeedback(customerBookings);
+    renderPublishedFeedbackList();
+}
+
+function renderPublishedFeedbackList() {
+    const container = document.getElementById('publishedFeedbackContainer');
+    if (!container) return;
+
+    if (!customerFeedbackList || customerFeedbackList.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4 text-muted">
+                <div class="d-inline-flex align-items-center justify-content-center bg-light rounded-circle mb-2" style="width: 48px; height: 48px;">
+                    <i class="bi bi-chat-heart text-secondary fs-4"></i>
+                </div>
+                <h6 class="fw-semibold text-dark mb-1">No Published Reviews Yet</h6>
+                <p class="small text-muted mb-0">Be the first to share your experience once your shoot is completed!</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Sort newest first
+    const sorted = [...customerFeedbackList].sort((a, b) => (b.id || 0) - (a.id || 0));
+
+    let html = '';
+    sorted.forEach(f => {
+        // Find matching booking details if available
+        const matchingBooking = (customerBookings || []).find(b => b.id === f.bookingId);
+        const eventTitle = matchingBooking?.eventTitle || `Photography Shoot (#EVT-${f.bookingId})`;
+
+        // Star icons
+        const rating = f.rating || 5;
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= rating) {
+                starsHtml += '<i class="bi bi-star-fill text-warning"></i> ';
+            } else {
+                starsHtml += '<i class="bi bi-star text-muted"></i> ';
+            }
+        }
+
+        const dateStr = f.createdAt ? f.createdAt.substring(0, 10) : '';
+
+        html += `
+            <div class="border rounded-3 p-3 mb-3 bg-light shadow-sm">
+                <div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                    <div>
+                        <strong class="text-dark">${escapeHtml(eventTitle)}</strong>
+                        <div class="small mt-1">
+                            ${starsHtml}
+                            <span class="text-dark ms-2 fw-semibold">${rating}.0 / 5</span>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                            <i class="bi bi-patch-check-fill me-1"></i>Verified Client
+                        </span>
+                        ${dateStr ? `<div class="text-muted small mt-1" style="font-size: 0.75rem;"><i class="bi bi-calendar3 me-1"></i>${escapeHtml(dateStr)}</div>` : ''}
+                    </div>
+                </div>
+                <p class="text-muted small mb-2">"${escapeHtml(f.reviewText || '')}"</p>
+                ${f.croResponse ? `
+                    <div class="bg-white p-2 rounded-2 border-start border-3 border-primary small mt-2 shadow-sm">
+                        <span class="fw-bold text-primary"><i class="bi bi-reply-fill me-1"></i>Client Relations Officer:</span> ${escapeHtml(f.croResponse)}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
 
 function renderCompletedBookingsForFeedback(bookings) {
     const tableBody = document.getElementById('completedBookingsTableBody');
@@ -787,6 +872,19 @@ function renderCompletedBookingsForFeedback(bookings) {
         const endTimeFormatted = b.endTime ? b.endTime.substring(0, 5) : '';
         const timeDisplay = (timeFormatted && endTimeFormatted) ? `${timeFormatted} - ${endTimeFormatted}` : timeFormatted;
 
+        const reviewedFeedback = customerFeedbackList.find(f => f.bookingId === b.id && !f.isDeleted);
+        const isReviewed = !!reviewedFeedback;
+
+        const actionButtonHtml = isReviewed ? `
+            <button class="btn btn-sm btn-outline-success fw-semibold px-3 d-inline-flex align-items-center gap-1 shadow-sm" disabled title="You have already submitted a review for this shoot">
+                <i class="bi bi-check-circle-fill text-success"></i> Review Completed
+            </button>
+        ` : `
+            <button class="btn btn-sm btn-primary fw-semibold px-3 shadow-sm d-inline-flex align-items-center gap-1" onclick="openReviewModalForBooking(${b.id})">
+                <i class="bi bi-star-fill text-warning"></i> Review
+            </button>
+        `;
+
         rowsHtml += `
             <tr>
                 <td class="ps-4">
@@ -809,9 +907,7 @@ function renderCompletedBookingsForFeedback(bookings) {
                     </span>
                 </td>
                 <td class="text-end pe-4">
-                    <button class="btn btn-sm btn-primary fw-semibold px-3 shadow-sm d-inline-flex align-items-center gap-1" onclick="openReviewModalForBooking(${b.id})">
-                        <i class="bi bi-star-fill text-warning"></i> Review
-                    </button>
+                    ${actionButtonHtml}
                 </td>
             </tr>
         `;
@@ -901,24 +997,76 @@ function openReviewModal() {
     }
 }
 
-function handleReviewSubmit(event) {
+async function handleReviewSubmit(event) {
     if (event) event.preventDefault();
 
     const bookingId = document.getElementById('reviewBookingId')?.value;
     const title = document.getElementById('reviewBookingEvent')?.textContent || 'Your Event';
     const rating = document.getElementById('reviewRating')?.value || '5';
+    const comments = (document.getElementById('reviewComments')?.value || '').trim();
 
-    const modalEl = document.getElementById('reviewModal');
-    if (modalEl) {
-        const modalInstance = bootstrap.Modal.getInstance(modalEl);
-        if (modalInstance) modalInstance.hide();
+    if (!bookingId) {
+        alert("Please select a valid booking to review.");
+        return;
+    }
+    if (!comments) {
+        alert("Please enter your review comments.");
+        return;
     }
 
-    const refMsg = bookingId ? ` for booking #EVT-${bookingId}` : '';
-    alert(`Thank you! Your ${rating}-star review for "${title}"${refMsg} has been submitted successfully.`);
+    const customerId = currentUser ? currentUser.id : null;
+    if (!customerId) {
+        showLoginPrompt('Please sign in to submit a service review and rating.', 'customer-dashboard.html#feedback');
+        return;
+    }
 
-    if (document.getElementById('reviewComments')) {
-        document.getElementById('reviewComments').value = '';
+    const submitBtn = event?.target?.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Submitting...';
+    }
+
+    try {
+        const payload = {
+            customerId: customerId,
+            bookingId: parseInt(bookingId),
+            rating: parseInt(rating),
+            reviewText: comments
+        };
+
+        const response = await fetch('/api/cro/feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to submit feedback (HTTP ${response.status})`);
+        }
+
+        const modalEl = document.getElementById('reviewModal');
+        if (modalEl) {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+        }
+
+        alert(`Thank you! Your ${rating}-star review for "${title}" has been submitted successfully to our Client Relations Officer.`);
+
+        if (document.getElementById('reviewComments')) {
+            document.getElementById('reviewComments').value = '';
+        }
+
+        await loadCustomerFeedbackData();
+    } catch (err) {
+        console.error("Error submitting review:", err);
+        alert("An error occurred while submitting your review. Please try again.");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Feedback';
+        }
     }
 }
 
@@ -1575,7 +1723,7 @@ async function loadCustomerBookings() {
             if (fullTableBody) fullTableBody.innerHTML = fullRowsHtml;
             if (recentTableBody) recentTableBody.innerHTML = recentRowsHtml;
 
-            renderCompletedBookingsForFeedback(customerBookings);
+            loadCustomerFeedbackData();
         }
     } catch (error) {
         console.error('Error fetching customer bookings:', error);
