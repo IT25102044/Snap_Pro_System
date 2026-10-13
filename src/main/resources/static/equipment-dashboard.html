@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapPro - Equipment Coordinator Portal</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --primary-accent: #2563eb;
+      --primary-subtle: #eff6ff;
+      --surface-card: #ffffff;
+      --border-subtle: #e2e8f0;
+      --body-bg: #f8fafc;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+    }
+
+    body {
+      background-color: var(--body-bg);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      min-height: 100vh;
+      background-color: var(--surface-card);
+      border-right: 1px solid var(--border-subtle);
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      font-weight: 500;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.5rem;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--primary-accent);
+      background-color: var(--primary-subtle);
+    }
+
+    /* Cards */
+    .stat-card {
+      background: var(--surface-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+
+    /* Status Badges */
+    .badge-soft-success {
+      background-color: #ecfdf5;
+      color: #047857;
+      border: 1px solid #d1fae5;
+    }
+
+    .badge-soft-warning {
+      background-color: #fffbeb;
+      color: #b45309;
+      border: 1px solid #fef3c7;
+    }
+
+    .badge-soft-danger {
+      background-color: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fee2e2;
+    }
+
+    .badge-soft-primary {
+      background-color: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #dbeafe;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container-fluid">
+  <div class="row">
+    <!-- Desktop Sidebar -->
+    <nav class="col-md-3 col-lg-2 d-none d-md-block sidebar px-3 py-4 sticky-top">
+      <div class="d-flex align-items-center mb-4 px-2">
+        <i class="bi bi-camera-reels-fill text-primary fs-3 me-2"></i>
+        <h5 class="mb-0 fw-bold">SnapPro</h5>
+      </div>
+      <div class="small text-uppercase text-muted fw-bold px-2 mb-2" style="font-size: 11px;">Equipment Desk</div>
+      <ul class="nav flex-column mb-auto">
+        <li class="nav-item">
+          <a class="nav-link active" href="#overview" data-bs-toggle="tab">
+            <i class="bi bi-speedometer2 me-2"></i> Overview
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#equipment-returns" data-bs-toggle="tab">
+            <i class="bi bi-box-arrow-in-down me-2"></i> Returns & Allocations
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#gear-inventory" data-bs-toggle="tab">
+            <i class="bi bi-camera me-2"></i> Gear Inventory
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#maintenance-desk" data-bs-toggle="tab">
+            <i class="bi bi-tools me-2"></i> Repair & Maintenance
+          </a>
+        </li>
+      </ul>
+      <hr class="text-secondary opacity-25 my-4" />
+      <div class="px-2">
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center overflow-hidden">
+            <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center me-2 flex-shrink-0" id="coordinatorInitials" style="width: 38px; height: 38px; font-size: 13px;">
+              EC
+            </div>
+            <div class="overflow-hidden">
+              <p class="mb-0 fw-semibold text-truncate small" id="coordinatorName">Equipment Coordinator</p>
+              <span class="text-muted text-truncate d-block" id="coordinatorEmail" style="font-size: 11px;">coordinator@snappro.com</span>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline-danger p-1 ms-2" title="Sign Out" id="logoutBtn" onclick="logout()">
+            <i class="bi bi-box-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Mobile Top Navigation Bar -->
+    <nav class="navbar d-md-none bg-white border-bottom px-3 py-2 sticky-top">
+      <div class="d-flex align-items-center">
+        <i class="bi bi-camera-reels-fill text-primary fs-4 me-2"></i>
+        <span class="fw-bold fs-5">SnapPro</span>
+      </div>
+      <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#equipMobileMenu">
+        <i class="bi bi-list fs-5"></i>
+      </button>
+    </nav>
+
+    <!-- Mobile Offcanvas Menu -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="equipMobileMenu">
+      <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title fw-bold">Equipment Menu</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+      </div>
+      <div class="offcanvas-body d-flex flex-column justify-content-between">
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="nav-link active" href="#overview" data-bs-toggle="tab" data-bs-dismiss="offcanvas">
+              <i class="bi bi-speedometer2 me-2"></i> Overview
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#equipment-returns" data-bs-toggle="tab" data-bs-dismiss="offcanvas">
+              <i class="bi bi-box-arrow-in-down me-2"></i> Returns & Allocations
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#gear-inventory" data-bs-toggle="tab" data-bs-dismiss="offcanvas">
+              <i class="bi bi-camera me-2"></i> Gear Inventory
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#maintenance-desk" data-bs-toggle="tab" data-bs-dismiss="offcanvas">
+              <i class="bi bi-tools me-2"></i> Repair & Maintenance
+            </a>
+          </li>
+        </ul>
+        <div class="pt-3 border-top mt-auto">
+          <div class="d-flex align-items-center mb-3">
+            <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center me-2 flex-shrink-0" id="mobileCoordinatorInitials" style="width: 38px; height: 38px; font-size: 13px;">
+              EC
+            </div>
+            <div class="overflow-hidden">
+              <p class="mb-0 fw-semibold text-truncate small" id="mobileCoordinatorName">Equipment Coordinator</p>
+              <span class="text-muted text-truncate d-block" id="mobileCoordinatorEmail" style="font-size: 11px;">coordinator@snappro.com</span>
+            </div>
+          </div>
+          <button class="btn btn-outline-danger btn-sm w-100" id="mobileLogoutBtn" onclick="logout()">
+            <i class="bi bi-box-arrow-right me-1"></i> Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+      <div class="tab-content">
+
+        <!-- TAB 1: OVERVIEW -->
+        <div class="tab-pane fade show active" id="overview">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+            <div>
+              <h3 class="fw-bold mb-1">Equipment Room Operations</h3>
+              <p class="text-muted mb-0">Check out camera packages, register returns, and audit damaged hardware.</p>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-secondary" onclick="openReturnModal()">
+                <i class="bi bi-upc-scan me-1"></i> Scan & Record Return
+              </button>
+              <button class="btn btn-outline-secondary" onclick="openCheckoutModal()">
+                <i class="bi bi-box-arrow-up-right me-1"></i> Gear Checkout
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Metrics Bar -->
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="stat-card p-3 d-flex align-items-center">
+                <div class="bg-success-subtle text-success p-3 rounded-circle me-3">
+                  <i class="bi bi-check2-circle fs-4"></i>
+                </div>
+                <div>
+                  <h6 class="text-muted mb-1 text-uppercase" style="font-size: 11px;">Available in Storage</h6>
+                  <h4 class="mb-0 fw-bold" id="metricAvailable">0 Items</h4>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="stat-card p-3 d-flex align-items-center">
+                <div class="bg-primary-subtle text-primary p-3 rounded-circle me-3">
+                  <i class="bi bi-camera-reels fs-4"></i>
+                </div>
+                <div>
+                  <h6 class="text-muted mb-1 text-uppercase" style="font-size: 11px;">Checked Out on Shoots</h6>
+                  <h4 class="mb-0 fw-bold" id="metricCheckedOut">0 Items</h4>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="stat-card p-3 d-flex align-items-center">
+                <div class="bg-warning-subtle text-warning p-3 rounded-circle me-3">
+                  <i class="bi bi-clock-history fs-4"></i>
+                </div>
+                <div>
+                  <h6 class="text-muted mb-1 text-uppercase" style="font-size: 11px;">Expected Returns Today</h6>
+                  <h4 class="mb-0 fw-bold" id="metricExpectedReturns">0 Items</h4>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="stat-card p-3 d-flex align-items-center">
+                <div class="bg-danger-subtle text-danger p-3 rounded-circle me-3">
+                  <i class="bi bi-wrench-adjustable fs-4"></i>
+                </div>
+                <div>
+                  <h6 class="text-muted mb-1 text-uppercase" style="font-size: 11px;">Under Repair / Damaged</h6>
+                  <h4 class="mb-0 fw-bold" id="metricMaintenance">0 Items</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pending Hardware Returns Callout -->
+          <div class="alert alert-warning bg-white border-warning border-start border-4 rounded-3 shadow-sm d-flex align-items-center justify-content-between p-3 mb-4">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-box-seam text-warning fs-3 me-3"></i>
+              <div>
+                <strong class="text-dark">Post-Shoot Hardware Intake Scheduled</strong>
+                <p class="mb-0 text-muted small">Corporate Annual Gala completed yesterday. Senior Photographer Ruwan Silva is due to return 2 camera bodies and 3 lenses.</p>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="openReturnModal()">Open Intake Form</button>
+          </div>
+
+          <!-- Active Allocations Table -->
+          <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+              <h5 class="fw-bold mb-0">Currently Checked-Out Equipment</h5>
+              <span class="badge badge-soft-primary">Live Roster</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table align-middle table-hover mb-0">
+                <thead class="table-light">
+                  <tr style="font-size: 12px; text-transform: uppercase;">
+                    <th>Serial / Barcode</th>
+                    <th>Gear Item</th>
+                    <th>Assigned Crew Member</th>
+                    <th>Event Reference</th>
+                    <th>Checkout Time</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody style="font-size: 14px;" id="activeAllocationsTableBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: RETURNS & ALLOCATIONS -->
+        <div class="tab-pane fade" id="equipment-returns">
+          <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+              <h3 class="fw-bold mb-1">Equipment Dispatch & Intake Log</h3>
+              <p class="text-muted mb-0">Audit history of equipment issued to photographers and logged back into inventory.</p>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#requestExtraGearModal">
+              <i class="bi bi-plus-slash-minus me-1"></i> On-Site Gear Request
+            </button>
+          </div>
+
+          <div class="card border-0 shadow-sm rounded-3">
+            <div class="table-responsive">
+              <table class="table align-middle table-hover mb-0">
+                <thead class="table-light">
+                  <tr style="font-size: 12px; text-transform: uppercase;">
+                    <th>Log ID</th>
+                    <th>Equipment</th>
+                    <th>Photographer</th>
+                    <th>Dispatched By</th>
+                    <th>Returned Timestamp</th>
+                    <th>Condition Assessment</th>
+                  </tr>
+                </thead>
+                <tbody style="font-size: 14px;" id="returnsLogTableBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: GEAR INVENTORY -->
+        <div class="tab-pane fade" id="gear-inventory">
+          <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+              <h3 class="fw-bold mb-1">Hardware Asset Directory</h3>
+              <p class="text-muted mb-0">Master catalog of camera bodies, optical glass, strobes, and grip accessories.</p>
+            </div>
+            <div class="d-flex gap-2">
+              <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Scan Barcode / Serial..." style="width: 220px;" onkeyup="searchGear()" />
+              <button class="btn btn-primary btn-sm" onclick="openAddGearModal()">
+                <i class="bi bi-plus-lg me-1"></i> Add Gear
+              </button>
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm rounded-3">
+            <div class="table-responsive">
+              <table class="table align-middle table-hover mb-0">
+                <thead class="table-light">
+                  <tr style="font-size: 12px; text-transform: uppercase;">
+                    <th>Serial Number</th>
+                    <th>Item Specification</th>
+                    <th>Model Code</th>
+                    <th>Category</th>
+                    <th>Current Inventory Status</th>
+                    <th class="text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody style="font-size: 14px;" id="gearTableBody">
+                  <!-- Dynamically populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: REPAIR & MAINTENANCE -->
+        <div class="tab-pane fade" id="maintenance-desk">
+          <div class="mb-4">
+            <h3 class="fw-bold mb-1">Damaged Gear & Workshop Service</h3>
+            <p class="text-muted mb-0">Track hardware sent for optical alignment, sensor cleaning, or physical repair.</p>
+          </div>
+
+          <div class="card border-0 shadow-sm rounded-3">
+            <div class="table-responsive">
+              <table class="table align-middle table-hover mb-0">
+                <thead class="table-light">
+                  <tr style="font-size: 12px; text-transform: uppercase;">
+                    <th>RMA Reference</th>
+                    <th>Serial No</th>
+                    <th>Equipment</th>
+                    <th>Reported Issue</th>
+                    <th>Service Status</th>
+                    <th class="text-end">Options</th>
+                  </tr>
+                </thead>
+                <tbody style="font-size: 14px;" id="maintenanceTableBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- MODAL: RECORD EQUIPMENT RETURN (UC-06 Scenario) -->
+<div class="modal fade" id="recordReturnModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold">Record Equipment Return</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-8">
+            <label class="form-label small fw-semibold">Scan Barcode or Enter Serial Number (Step 1)</label>
+            <div class="input-group">
+              <span class="input-group-text bg-white"><i class="bi bi-upc"></i></span>
+              <input type="text" id="returnSerialNumber" class="form-control" placeholder="CAM-SN-..." />
+              <button class="btn btn-outline-secondary" onclick="lookupReturnGear()">Lookup</button>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small fw-semibold">Allocation ID</label>
+            <input type="text" id="returnAllocationId" class="form-control bg-light" readonly />
+          </div>
+        </div>
+
+        <div class="border rounded p-3 bg-light mb-3" id="returnItemDetails" style="display:none;">
+          <h6 class="fw-bold mb-1" id="returnItemName">Item Identified</h6>
+          <small class="text-muted" id="returnItemContext">Context</small>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Gear Inspection Condition (Step 3)</label>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="conditionRadio" id="conditionNormal" checked>
+            <label class="form-check-label small" for="conditionNormal">
+              Intact & Clean - Return item to <strong>"Available"</strong> status.
+            </label>
+          </div>
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="radio" name="conditionRadio" id="conditionDamage">
+            <label class="form-check-label small text-danger fw-semibold" for="conditionDamage">
+              Damaged / Missing Parts - Route item to <strong>"Under Repair / Maintenance"</strong>.
+            </label>
+          </div>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Inspection Remarks / Return Notes</label>
+          <textarea id="returnNotes" class="form-control form-control-sm" rows="2" placeholder="Note minor scuffs, sensor check condition, lens cap present, etc..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-3 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" onclick="submitReturn()">Confirm Intake & Set Available</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REPORT DAMAGE / ISSUE (UC-06 Extension 3a) -->
+<div class="modal fade" id="reportDamageModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-danger">Report Equipment Damage</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <input type="hidden" id="damageEquipmentId">
+        <input type="hidden" id="damageAllocationId">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Equipment Item</label>
+          <input type="text" id="damageEquipmentName" class="form-control bg-light" readonly />
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Nature of Damage</label>
+          <textarea id="damageDescription" class="form-control" rows="3" placeholder="Describe physical drops, scratched front element, malfunctioning autofocus motor..."></textarea>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Action Route</label>
+          <select id="damageActionRoute" class="form-select form-select-sm">
+            <option value="REPAIR" selected>Flag as Under Repair (Send to Workshop)</option>
+            <option value="DECOMMISSION">Decommission Item Completely</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-3 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger px-3" onclick="submitDamage()">Submit Incident</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REQUEST ADDITIONAL GEAR ON-SITE (UC-06 Extension 3b) -->
+<div class="modal fade" id="requestExtraGearModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold">On-Site Extra Gear Request</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Target Booking / Event</label>
+          <select class="form-select">
+            <option selected>Colombo Fashion Week (#EVT-8980) - Naveen Fernando</option>
+            <option>Tech Leaders Summit (#EVT-9014)</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Select Additional Hardware to Dispatch</label>
+          <select class="form-select">
+            <option selected>Sony FE 70-200mm f/2.8 GM II (Telephoto)</option>
+            <option>Battery Grip + 2x NP-FZ100 Batteries</option>
+            <option>Godox AD200 Pocket Flash Kit</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Coordinator Authorization Note</label>
+          <input type="text" class="form-control form-control-sm" placeholder="Dispatched via express bike courier..." />
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-3 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-3" data-bs-dismiss="modal">Approve & Dispatch</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: STANDARD GEAR CHECKOUT -->
+<div class="modal fade" id="checkoutModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold">Gear Checkout Allocation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Event / Booking Reference</label>
+          <select id="checkoutBookingId" class="form-select">
+            <option value="1" selected>Corporate Annual Gala - ID #1</option>
+            <option value="2">Colombo Fashion Week - ID #2</option>
+            <option value="3">Tech Leaders Summit - ID #3</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Assigned Photographer</label>
+          <select id="checkoutPhotographerId" class="form-select">
+            <option value="1" selected>Ruwan Silva - ID #1</option>
+            <option value="2">Kasun Perera - ID #2</option>
+            <option value="3">Nimal Fernando - ID #3</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Select Available Equipment</label>
+          <select id="checkoutEquipmentId" class="form-select">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-3 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-3" onclick="submitCheckout()">Confirm Allocation</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ADD / EDIT GEAR -->
+<div class="modal fade" id="gearFormModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold" id="gearFormTitle">Add New Gear</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <input type="hidden" id="gearId">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Serial Number</label>
+          <input type="text" class="form-control" id="gearSerialNumber" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Item Specification</label>
+          <input type="text" class="form-control" id="gearItemName" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Model Code</label>
+          <input type="text" class="form-control" id="gearModel">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Category</label>
+          <input type="text" class="form-control" id="gearCategory">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Status ID (1=Available, 2=Checked Out, 3=Repair)</label>
+          <input type="number" class="form-control" id="gearStatusId" value="1">
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Notes</label>
+          <textarea class="form-control" id="gearNotes"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer border-top px-4 py-3 bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-3" onclick="saveGear()">Save Gear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Authentication JS -->
+<script src="js/Admin&Customer/auth.js"></script>
+<!-- Custom Dashboard JS -->
+<script src="/js/equipment_management/equipment-dashboard.js"></script>
+</body>
+</html>
