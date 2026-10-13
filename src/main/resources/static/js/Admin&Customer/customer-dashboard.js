@@ -612,17 +612,37 @@ async function loadPackages() {
                 // Process inclusions
                 let inclusionsHtml = '';
                 if (pkg.inclusions) {
-                    const items = pkg.inclusions.split(';').map(s => s.trim()).filter(Boolean);
-                    items.forEach(item => {
-                        inclusionsHtml += `<li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>${escapeHtml(item)}</li>`;
-                    });
+                    const items = pkg.inclusions.includes(';')
+                        ? pkg.inclusions.split(';').map(s => s.trim()).filter(Boolean)
+                        : pkg.inclusions.split(',').map(s => s.trim()).filter(Boolean);
+                    if (items.length > 0) {
+                        items.forEach(item => {
+                            inclusionsHtml += `<li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>${escapeHtml(item)}</li>`;
+                        });
+                    } else {
+                        inclusionsHtml = `<li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Full Event Photography & Highlights</li>`;
+                    }
                 } else {
                     inclusionsHtml = `<li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Full Event Photography & Highlights</li>`;
                 }
 
+                const imageBanner = pkg.imageUrl
+                    ? `<div class="mb-3 rounded overflow-hidden position-relative d-flex align-items-center justify-content-center bg-dark" 
+                            style="height: 220px; cursor: pointer;" 
+                            title="Click to view full image"
+                            onclick="viewFullPackageImage('${escapeForJs(pkg.imageUrl)}', '${escapeForJs(pkg.title || 'Package Image')}')">
+                         <img src="${pkg.imageUrl}" class="position-absolute w-100 h-100" style="object-fit: cover; filter: blur(16px) brightness(0.5); transform: scale(1.15); pointer-events: none;" alt="">
+                         <img src="${pkg.imageUrl}" class="position-relative" style="max-width: 100%; max-height: 100%; width: auto; height: 100%; object-fit: contain; z-index: 1;" alt="${escapeHtml(pkg.title)}">
+                         <span class="position-absolute bottom-0 end-0 m-2 badge bg-dark bg-opacity-75 text-white shadow-sm" style="z-index: 2; font-size: 11px;">
+                           <i class="bi bi-arrows-fullscreen me-1"></i>View Full
+                         </span>
+                       </div>`
+                    : '';
+
                 cardsHtml += `
                     <div class="col-12 col-md-6 col-lg-4">
-                        <div class="package-card ${isFeatured ? 'featured' : ''} p-4">
+                        <div class="package-card ${isFeatured ? 'featured' : ''} p-4 d-flex flex-column h-100">
+                            ${imageBanner}
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="text-uppercase ${isFeatured ? 'text-primary' : 'text-muted'} fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">
                                     <i class="bi bi-clock me-1"></i>${escapeHtml(coverageHours)}
@@ -639,7 +659,7 @@ async function loadPackages() {
                             <ul class="list-unstyled small mb-4 flex-grow-1">
                                 ${inclusionsHtml}
                             </ul>
-                            <button class="btn ${isFeatured ? 'btn-primary' : 'btn-outline-primary'} w-100 py-2 fw-bold"
+                            <button class="btn ${isFeatured ? 'btn-primary' : 'btn-outline-primary'} w-100 py-2 fw-bold mt-auto" 
                                     onclick="selectPackageForBooking(${pkg.id}, '${escapeForJs(pkg.title)}')">
                                 <i class="bi bi-camera me-1"></i> Book Package
                             </button>
@@ -1687,8 +1707,8 @@ async function loadCustomerBookings() {
                         </td>
                         <td>
                             ${balanceVal > 0
-                                ? `<span class="badge bg-warning-subtle text-warning fw-bold border border-warning-subtle">LKR ${balanceFormatted}</span>`
-                                : `<span class="text-muted small">LKR 0.00</span>`}
+                    ? `<span class="badge bg-warning-subtle text-warning fw-bold border border-warning-subtle">LKR ${balanceFormatted}</span>`
+                    : `<span class="text-muted small">LKR 0.00</span>`}
                         </td>
                         <td><span class="badge ${badgeClass}">${escapeHtml(b.bookingStatus || 'Pending')}</span></td>
                         <td class="text-end">
@@ -1991,3 +2011,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check session on page load
     checkSession();
 });
+
+// Function to view full package image in lightbox modal
+function viewFullPackageImage(imageUrl, title) {
+    if (!imageUrl) return;
+    const modalTitle = document.getElementById('fullPackageImageModalTitle');
+    const modalImg = document.getElementById('fullPackageImageModalImg');
+    const modalEl = document.getElementById('fullPackageImageModal');
+    if (modalTitle) modalTitle.innerText = title || 'Package Image';
+    if (modalImg) modalImg.src = imageUrl;
+    if (modalEl) {
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInstance.show();
+    }
+}
+window.viewFullPackageImage = viewFullPackageImage;
